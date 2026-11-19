@@ -14,14 +14,17 @@ import {
   canonicalToolSlug,
 } from "../src/features/tools/registry.ts";
 
-test("Phase 5 registry has 33 distinct tools, 20 active and 13 planned", () => {
+test("Registry has 33 distinct tools, 30 active and three planned", () => {
   assert.equal(tools.length, 33);
   assert.equal(new Set(tools.map((tool) => tool.slug)).size, 33);
-  assert.equal(tools.filter((tool) => tool.status === "Available").length, 20);
+  assert.equal(tools.filter((tool) => tool.status === "Available").length, 30);
   assert.equal(
     tools.filter((tool) => tool.status === "Coming Soon").length,
-    13,
+    3,
   );
+  assert.equal(legacyToolRoutes.size, 16);
+  assert.deepEqual(tools.filter(tool => tool.status === "Coming Soon").map(tool => tool.slug),
+    ["instagram-video-downloader", "tiktok-video-downloader", "threads-video-downloader"]);
   for (const [legacy, target] of legacyToolRoutes) {
     assert.notEqual(legacy, target.slug);
     assert.ok(tools.some((tool) => tool.slug === target.slug));

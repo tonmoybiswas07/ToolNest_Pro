@@ -18,6 +18,8 @@
     "@codemirror/state": "^6.7.6",
     "@codemirror/view": "^6.43.15",
     "@fontsource-variable/geist": "^5.0.0",
+    "@fontsource-variable/noto-sans-bengali": "^5.3.0",
+    "@js-temporal/polyfill": "^0.5.1",
     "@mediapipe/tasks-vision": "0.10.21",
     "@radix-ui/react-slot": "^1.2.4",
     "better-auth": "^1.7.26",

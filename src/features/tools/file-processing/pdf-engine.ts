@@ -8,6 +8,8 @@ import {
 import { baseName, MiB, validatePdf, type Artifact } from "./files";
 import { decode } from "./image-engine";
 import { pageRange } from "./pdf-ranges";
+import { createTextPdf } from "./text-pdf";
+import type { PdfTextAlignment, textPdfPageSizes } from "./text-pdf-options";
 
 export const pageLimit = 500;
 export type PageEdit = { p: number; rotate: number };
@@ -28,6 +30,12 @@ export type PdfCommand =
   | { type: "merge"; files: File[] }
   | { type: "split"; file: File; range: string; separate: boolean }
   | { type: "optimize"; file: File }
+  | {
+      type: "text";
+      text: string;
+      pageSize: keyof typeof textPdfPageSizes;
+      alignment: PdfTextAlignment;
+    }
   | {
       type: "toolkit";
       file: File;
@@ -87,6 +95,7 @@ function artifact(
   return {
     name,
     blob: new Blob([new Uint8Array(bytes)], { type: "application/pdf" }),
+    pageCount: count,
     detail: `${count} ${count === 1 ? "page" : "pages"}${detail ? ` · ${detail}` : ""}`,
     originalBytes,
   };
@@ -123,6 +132,15 @@ export async function pdfCommand(
   input: PdfCommand,
   progress: (text: string) => void,
 ) {
+  if (input.type === "text") {
+    progress("Writing text to PDF pages…");
+    const { bytes, count } = await createTextPdf(
+      input.text,
+      input.pageSize,
+      input.alignment,
+    );
+    return [artifact("text.pdf", bytes, count)];
+  }
   if (input.type === "inspect") {
     return Promise.all(
       input.files.map(async (file) => {
@@ -180,14 +198,12 @@ export async function pdfCommand(
       );
       const width = image.width * factor,
         height = image.height * factor;
-      out
-        .addPage([w, h])
-        .drawImage(image, {
-          x: (w - width) / 2,
-          y: (h - height) / 2,
-          width,
-          height,
-        });
+      out.addPage([w, h]).drawImage(image, {
+        x: (w - width) / 2,
+        y: (h - height) / 2,
+        width,
+        height,
+      });
     }
     return [artifact("images.pdf", await out.save(), out.getPageCount())];
   }
@@ -196,14 +212,12 @@ export async function pdfCommand(
     const out = await PDFDocument.create();
     for (const item of input.images) {
       const image = await out.embedJpg(await item.blob.arrayBuffer());
-      out
-        .addPage([item.width, item.height])
-        .drawImage(image, {
-          x: 0,
-          y: 0,
-          width: item.width,
-          height: item.height,
-        });
+      out.addPage([item.width, item.height]).drawImage(image, {
+        x: 0,
+        y: 0,
+        width: item.width,
+        height: item.height,
+      });
     }
     return [
       artifact(

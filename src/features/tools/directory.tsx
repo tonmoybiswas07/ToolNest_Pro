@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { Search, SearchX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -63,7 +64,14 @@ export function Directory({ initialCategory }: { initialCategory: CategoryId | "
           ))}
         </div>
       </div>
-      <h2 aria-live="polite" className="my-5 text-sm font-medium text-muted-foreground">{results.length} {results.length === 1 ? "tool" : "tools"}</h2>
+      <div className="my-5 flex flex-wrap items-center justify-between gap-3">
+        <h2 aria-live="polite" className="text-sm font-medium text-muted-foreground">{results.length} {results.length === 1 ? "tool" : "tools"}</h2>
+        {results.some(tool => tool.slug === "pdf-toolkit") && (
+          <Button asChild variant="outline">
+            <Link href="/tools/pdf-toolkit?mode=text-to-pdf">Text to PDF</Link>
+          </Button>
+        )}
+      </div>
       {results.length ? (
         <div className="card-grid">{results.map((tool) => <ToolCard key={tool.slug} tool={tool} />)}</div>
       ) : (

@@ -9,13 +9,22 @@ import {
   Field,
   Notice,
   selectClass,
+  TextArea,
   type StudioProps,
 } from "../studios/shared";
 import { Slider } from "../studios/design-controls";
 import { acceptImages } from "./image-controls";
 import { inspectImage, type Artifact, type Job } from "./files";
+import type { PdfFontStyle } from "./browser-text-pdf";
 import type { Metadata, PageEdit, PdfCommand, Watermark } from "./pdf-engine";
 import { renderPdf } from "./pdf-render";
+import { GeneratedPdfViewer } from "./generated-pdf-viewer";
+import {
+  type PdfTextAlignment,
+  textPdfLimit,
+  textPdfPageSizes,
+  unsupportedPdfText,
+} from "./text-pdf-options";
 import {
   FileDropzone,
   FileOrder,
@@ -875,11 +884,153 @@ function EditPdf({ slug }: StudioProps) {
   );
 }
 
+function TextToPdf({ slug }: StudioProps) {
+  const [text, setText] = useState("");
+  const [pageSize, setPageSize] = useState<keyof typeof textPdfPageSizes>("A4");
+  const [alignment, setAlignment] = useState<PdfTextAlignment>("auto");
+  const [fontStyle, setFontStyle] = useState<"auto" | PdfFontStyle>("auto");
+  const [font, setFont] = useState<File>();
+  const job = useFileJob(slug);
+
+  function generate() {
+    void job.run(async (context) => {
+      if (!font && fontStyle === "auto") {
+        try {
+          return await pdfJob<Artifact[]>(
+            { type: "text", text, pageSize, alignment },
+            context,
+          );
+        } catch (error) {
+          if (!(error instanceof Error) || error.message !== unsupportedPdfText)
+            throw error;
+        }
+      }
+      context.signal.throwIfAborted();
+      const { renderBrowserTextPdf } = await import("./browser-text-pdf");
+      return renderBrowserTextPdf(
+        text,
+        pageSize,
+        fontStyle === "auto" ? "sans-serif" : fontStyle,
+        font,
+        alignment,
+        context,
+      );
+    });
+  }
+
+  return (
+    <FileWorkspace
+      job={job}
+      artifactView={(file) => <GeneratedPdfViewer file={file} />}
+      notice="Convert plain text to PDF. Supports Bangla and other scripts through browser fonts, with automatic wrapping and pagination."
+    >
+      <fieldset disabled={job.busy} className="space-y-4">
+        <Field label="Text to convert">
+          <TextArea
+            dir="auto"
+            className="min-h-52"
+            value={text}
+            maxLength={textPdfLimit}
+            onChange={(event) => setText(event.target.value)}
+          />
+        </Field>
+        <Field label="Page size">
+          <select
+            className={selectClass}
+            value={pageSize}
+            onChange={(event) =>
+              setPageSize(event.target.value as keyof typeof textPdfPageSizes)
+            }
+          >
+            {Object.keys(textPdfPageSizes).map((size) => (
+              <option key={size}>{size}</option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Text alignment">
+          <select
+            className={selectClass}
+            value={alignment}
+            onChange={(event) =>
+              setAlignment(event.target.value as PdfTextAlignment)
+            }
+          >
+            <option value="auto">Automatic (by text direction)</option>
+            <option value="left">Left</option>
+            <option value="center">Center</option>
+            <option value="right">Right</option>
+            <option value="justify">Justified</option>
+          </select>
+        </Field>
+        <Field label="Font style">
+          <select
+            className={selectClass}
+            value={fontStyle}
+            onChange={(event) =>
+              setFontStyle(event.target.value as typeof fontStyle)
+            }
+          >
+            <option value="auto">Automatic</option>
+            <option value="sans-serif">Sans serif</option>
+            <option value="serif">Serif</option>
+            <option value="monospace">Monospace</option>
+          </select>
+        </Field>
+        <FileDropzone
+          label="Add a font (optional)"
+          disabled={job.busy}
+          accept=".ttf,.otf,.woff,.woff2"
+          fileMiB={10}
+          acceptFiles={([file]) => setFont(file)}
+        />
+        {font && (
+          <div className="flex flex-wrap items-center gap-2">
+            <Notice>{font.name}</Notice>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setFont(undefined)}
+            >
+              Remove font
+            </Button>
+          </div>
+        )}
+        <Notice>
+          Automatic mode keeps supported Latin text selectable. Bangla, custom
+          fonts, and other browser fonts are exported as images to preserve
+          their appearance. Other scripts depend on available glyphs.
+        </Notice>
+        <Actions>
+          <Button type="button" disabled={!text.trim()} onClick={generate}>
+            Preview PDF
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => {
+              setText("");
+              setPageSize("A4");
+              setFontStyle("auto");
+              setAlignment("auto");
+              setFont(undefined);
+              job.clear();
+            }}
+          >
+            Reset
+          </Button>
+        </Actions>
+      </fieldset>
+    </FileWorkspace>
+  );
+}
+
 function Toolkit(props: StudioProps) {
   const params = useSearchParams();
   const requested = params.get("mode");
   const mode =
-    requested === "pdf-to-image" || requested === "image-to-pdf"
+    requested === "pdf-to-image" ||
+    requested === "image-to-pdf" ||
+    requested === "text-to-pdf"
       ? requested
       : "edit";
   return (
@@ -894,6 +1045,7 @@ function Toolkit(props: StudioProps) {
             ["edit", "Edit PDF"],
             ["pdf-to-image", "PDF to Image"],
             ["image-to-pdf", "Image to PDF"],
+            ["text-to-pdf", "Text to PDF"],
           ] as const
         ).map(([id, label]) => (
           <Button
@@ -916,6 +1068,8 @@ function Toolkit(props: StudioProps) {
         <PdfToImage {...props} />
       ) : mode === "image-to-pdf" ? (
         <ImagesToPdf {...props} />
+      ) : mode === "text-to-pdf" ? (
+        <TextToPdf {...props} />
       ) : (
         <EditPdf {...props} />
       )}

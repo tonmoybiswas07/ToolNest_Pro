@@ -3,6 +3,7 @@ export const imageFormats = ["image/jpeg", "image/png", "image/webp"] as const;
 export type ImageFormat = (typeof imageFormats)[number];
 export type ImageInfo = { type: ImageFormat; width: number; height: number };
 export type Artifact = {
+  pageCount?: number;
   name: string;
   blob: Blob;
   detail?: string;

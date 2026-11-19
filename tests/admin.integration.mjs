@@ -97,6 +97,23 @@ async function verify() {
   }
   assert.equal(ready?.status, 200);
 
+  const redirects = {
+    "image-cropper": "image-editor", "image-watermark": "social-media-image-studio",
+    "json-formatter": "json-studio", "base64-converter": "jwt-inspector",
+    "regex-tester": "regex-lab", "text-diff": "code-diff-studio",
+    "duplicate-line-remover": "smart-notes-studio", "lorem-ipsum-generator": "prompt-builder",
+    "palette-generator": "color-system-generator", "gradient-builder": "gradient-studio",
+    "contrast-checker": "glassmorphism-builder", "qr-code-generator": "qr-code-studio",
+    "pdf-to-image": "pdf-toolkit?mode=pdf-to-image", "image-to-pdf": "pdf-toolkit?mode=image-to-pdf",
+    "pdf-merge": "pdf-merger", "pdf-split": "pdf-splitter",
+  };
+  for (const [legacy, canonical] of Object.entries(redirects)) {
+    const response = await request(`/tools/${legacy}`);
+    assert.equal(response.status, 308, legacy);
+    assert.equal(response.headers.get("location"), `/tools/${canonical}`);
+    assert.equal((await request(`/tools/${canonical}`)).status, 200);
+  }
+
   assert.equal((await request("/api/admin")).status, 401);
   assert.equal((await request("/admin")).headers.get("location"), "/login");
   const owner = await signup("Owner");
@@ -368,7 +385,7 @@ async function verify() {
       await analytics({
         ...execution,
         id: randomUUID(),
-        slug: "color-converter",
+        slug: "instagram-video-downloader",
       })
     ).status,
     400,

@@ -267,9 +267,11 @@ function SizeChange({ before, after }: { before: number; after: number }) {
 export function Results({
   job,
   empty = "Processed files will appear here.",
+  artifactView,
 }: {
   job: ReturnType<typeof useFileJob>;
   empty?: string;
+  artifactView?: (file: Artifact) => ReactNode;
 }) {
   const [zipBusy, setZipBusy] = useState(false);
   const [zipError, setZipError] = useState("");
@@ -335,13 +337,17 @@ export function Results({
               <FilePreview blob={file.blob} label="Processed image" />
             </div>
           )}
-          <Button
-            type="button"
-            className="justify-self-start"
-            onClick={() => downloadFile(file.name, file.blob)}
-          >
-            Download {file.name}
-          </Button>
+          {artifactView ? (
+            artifactView(file)
+          ) : (
+            <Button
+              type="button"
+              className="justify-self-start"
+              onClick={() => downloadFile(file.name, file.blob)}
+            >
+              Download {file.name}
+            </Button>
+          )}
         </div>
       ))}
     </Panel>
@@ -352,10 +358,12 @@ export function FileWorkspace({
   children,
   job,
   notice,
+  artifactView,
 }: {
   children: ReactNode;
   job: ReturnType<typeof useFileJob>;
   notice: string;
+  artifactView?: (file: Artifact) => ReactNode;
 }) {
   return (
     <div className="mt-8 grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-2 [&_fieldset]:min-w-0 [&_select]:w-full [&_select]:min-w-0">
@@ -363,7 +371,7 @@ export function FileWorkspace({
         <Notice>{notice} Files are processed in this browser.</Notice>
         {children}
       </Panel>
-      <Results job={job} />
+      <Results job={job} artifactView={artifactView} />
     </div>
   );
 }
