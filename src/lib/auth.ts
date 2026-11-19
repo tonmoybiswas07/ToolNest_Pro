@@ -1,6 +1,9 @@
 import "server-only";
 
 import { mongodbAdapter } from "@better-auth/mongo-adapter";
+import { createAuthMiddleware } from "better-auth/api";
+import { admin } from "better-auth/plugins";
+import { recordActivity } from "@/features/analytics/store";
 import { betterAuth } from "better-auth/minimal";
 import { z } from "zod";
 import { ensureAuthIndexes, getMongoClient } from "@/lib/mongodb";
@@ -13,28 +16,58 @@ const configSchema = z.object({
       && (url.protocol === "https:" || ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname))),
 });
 
-export function googleAuthEnabled() {
-  return Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
+function getGoogleConfig() {
+  const clientId = process.env.GOOGLE_CLIENT_ID?.trim();
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET?.trim();
+  return clientId && clientSecret ? { clientId, clientSecret } : undefined;
 }
 
-function createAuth(config: z.output<typeof configSchema>) {
+export function googleAuthEnabled() {
+  return Boolean(getGoogleConfig());
+}
+
+async function createAuth(config: z.output<typeof configSchema>) {
   const client = getMongoClient(config.MONGODB_URI);
+  const db = client.db();
+  await ensureAuthIndexes(db);
+
+  const google = getGoogleConfig();
   const baseURL = config.BETTER_AUTH_URL.origin;
 
+  const adminPlugin = admin({ defaultRole: "user", adminRoles: ["admin"] });
+
   return betterAuth({
+    plugins: [adminPlugin],
+    disabledPaths: Object.values(adminPlugin.endpoints).map(endpoint => endpoint.path).filter(path => path !== undefined),
+    databaseHooks: {
+      user: {
+        create: { after: async (user, context) => {
+          const provider = context?.path === "/sign-up/email" ? "credential" : context?.params?.id === "google" ? "google" : undefined;
+          await recordActivity("registration", user.id, provider);
+        } },
+      },
+    },
+    hooks: {
+      after: createAuthMiddleware(async ctx => {
+        const provider = ctx.path === "/sign-in/email" ? "credential" : ctx.path === "/callback/:id" && ctx.params?.id === "google" ? "google" : undefined;
+        const newSession = ctx.context.newSession;
+        if (provider && newSession) await recordActivity("login", newSession.user.id, provider);
+      }),
+    },
     appName: "ToolNest Pro",
     baseURL,
     secret: config.BETTER_AUTH_SECRET,
     trustedOrigins: [baseURL],
-    database: mongodbAdapter(client.db(), { client }),
+    database: mongodbAdapter(db, { client }),
     emailAndPassword: { enabled: true, minPasswordLength: 8, maxPasswordLength: 128 },
-    socialProviders: googleAuthEnabled() ? {
-      google: {
-        clientId: process.env.GOOGLE_CLIENT_ID!,
-        clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-        prompt: "select_account",
+    socialProviders: google ? { google: { ...google, prompt: "select_account" } } : {},
+    logger: {
+      level: "warn",
+      log: (level) => {
+        if (level === "error") console.error("Better Auth reported an error.");
+        if (level === "warn") console.warn("Better Auth reported a warning.");
       },
-    } : {},
+    },
     account: {
       accountLinking: { enabled: false },
       encryptOAuthTokens: true,
@@ -52,16 +85,14 @@ export function getAuth() {
   if (auth) return auth;
 
   const config = configSchema.safeParse(process.env);
-  if (!config.success || Boolean(process.env.GOOGLE_CLIENT_ID) !== Boolean(process.env.GOOGLE_CLIENT_SECRET)) {
+  if (!config.success) {
+    console.warn("Invalid authentication environment variables", config.error.issues.map((issue) => issue.path[0]));
     return null;
   }
 
-  auth = createAuth(config.data);
+  auth = createAuth(config.data).catch((error: unknown) => {
+    auth = undefined;
+    throw error;
+  });
   return auth;
-}
-
-export async function getReadyAuth() {
-  const instance = getAuth();
-  if (instance) await ensureAuthIndexes(getMongoClient(process.env.MONGODB_URI!));
-  return instance;
 }

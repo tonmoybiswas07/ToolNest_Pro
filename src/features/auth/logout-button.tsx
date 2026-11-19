@@ -28,8 +28,22 @@ export function LogoutButton({ className }: { className?: string }) {
   }
 
   return (
-    <Button type="button" variant="outline" className={className} disabled={pending} onClick={logout}>
-      {pending ? <LoaderCircle size={16} className="motion-safe:animate-spin" aria-hidden /> : <LogOut size={16} aria-hidden />}
+    <Button
+      type="button"
+      variant="outline"
+      className={className}
+      disabled={pending}
+      onClick={logout}
+    >
+      {pending ? (
+        <LoaderCircle
+          size={16}
+          className="motion-safe:animate-spin"
+          aria-hidden
+        />
+      ) : (
+        <LogOut size={16} aria-hidden />
+      )}
       {pending ? "Signing out…" : "Sign out"}
     </Button>
   );

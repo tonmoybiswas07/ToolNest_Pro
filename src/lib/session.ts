@@ -10,10 +10,12 @@ export const getSession = cache(async () => {
   const requestHeaders = await headers();
   if (!getSessionCookie(requestHeaders)) return null;
 
-  const auth = getAuth();
+  const auth = await getAuth();
   if (!auth) return null;
 
-  return auth.api.getSession({ headers: requestHeaders, query: { disableRefresh: true } });
+  const session = await auth.api.getSession({ headers: requestHeaders, query: { disableRefresh: true } });
+  if (session?.user.banned && (!session.user.banExpires || new Date(session.user.banExpires) > new Date())) return null;
+  return session;
 });
 
 export async function requireSession() {

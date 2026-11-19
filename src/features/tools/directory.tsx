@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Search, SearchX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { sendAnalytics } from "@/features/analytics/client";
 import { cn } from "@/lib/utils";
 import { ToolCard } from "./cards";
 import { categories, categoryIds, tools, type CategoryId } from "./registry";
@@ -16,6 +17,22 @@ export function Directory({ initialCategory }: { initialCategory: CategoryId | "
     const searchable = `${tool.name} ${tool.description} ${categories[tool.category].name}`.toLowerCase();
     return (category === "all" || category === tool.category) && terms.every((term) => searchable.includes(term));
   });
+
+  const normalized = query.trim().toLowerCase();
+  const knownTerm = tools.find(tool => tool.name.toLowerCase() === normalized)?.slug
+    ?? categoryIds.find(id => categories[id].name.toLowerCase() === normalized);
+  const zero = results.length === 0;
+
+  useEffect(() => {
+    sessionStorage.removeItem("toolnest-search");
+    if (!normalized) return;
+    const timer = window.setTimeout(() => {
+      const id = crypto.randomUUID();
+      sessionStorage.setItem("toolnest-search", id);
+      sendAnalytics({ type: "search", id, keyword: knownTerm, zero }).catch(() => {});
+    }, 650);
+    return () => window.clearTimeout(timer);
+  }, [normalized, knownTerm, zero]);
 
   function selectCategory(selection: CategoryId | "all") {
     setCategory(selection);
