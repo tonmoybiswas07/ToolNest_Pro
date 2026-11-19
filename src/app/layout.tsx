@@ -10,11 +10,11 @@ export const metadata: Metadata = {
     template: "%s | ToolNest Pro",
   },
   description:
-    "Explore the ToolNest Pro catalog of 33 planned tools for images, documents, code, text, design, everyday utilities, and social video.",
+    "Explore the ToolNest Pro catalog of 33 tools for images, documents, code, text, design, everyday utilities, and social video.",
   openGraph: {
     title: "ToolNest Pro",
     description:
-      "Browse the planned all-in-one toolkit for everyday digital tasks.",
+      "Browse the all-in-one toolkit for everyday digital tasks.",
     type: "website",
     siteName: "ToolNest Pro",
   },

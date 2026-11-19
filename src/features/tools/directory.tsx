@@ -24,11 +24,11 @@ export function Directory({ initialCategory }: { initialCategory: CategoryId | "
   const zero = results.length === 0;
 
   useEffect(() => {
-    sessionStorage.removeItem("toolnest-search");
-    if (!normalized) return;
+    try { sessionStorage.removeItem("toolnest-search"); } catch {}
+    if (!normalized || typeof crypto.randomUUID !== "function") return;
     const timer = window.setTimeout(() => {
       const id = crypto.randomUUID();
-      sessionStorage.setItem("toolnest-search", id);
+      try { sessionStorage.setItem("toolnest-search", id); } catch {}
       sendAnalytics({ type: "search", id, keyword: knownTerm, zero }).catch(() => {});
     }, 650);
     return () => window.clearTimeout(timer);

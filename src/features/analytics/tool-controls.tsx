@@ -8,16 +8,20 @@ import { Button } from "@/components/ui/button";
 import { authClient } from "@/lib/auth-client";
 import { sendAnalytics } from "./client";
 
-export function ToolControls({ slug }: { slug: string }) {
+export function ToolControls({ slug, previousSlug }: { slug: string; previousSlug?: string }) {
   const { data: session } = authClient.useSession();
   const [favorite, setFavorite] = useState(false);
   const [pending, setPending] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
+    if (typeof crypto.randomUUID !== "function") return;
     const id = crypto.randomUUID();
-    const attribution = sessionStorage.getItem("toolnest-search");
-    sessionStorage.removeItem("toolnest-search");
+    let attribution: string | null = null;
+    try {
+      attribution = sessionStorage.getItem("toolnest-search");
+      sessionStorage.removeItem("toolnest-search");
+    } catch {}
     const searchId = attribution?.split(":")[0];
     if (searchId) sendAnalytics({ type: "opened", slug, id, searchId }).catch(() => {});
     else sendAnalytics({ type: "opened", slug, id }).catch(() => {});
@@ -28,12 +32,12 @@ export function ToolControls({ slug }: { slug: string }) {
     let current = true;
     fetch("/api/analytics/preferences").then(response => response.ok ? response.json() : null).then(data => {
       if (current && data) {
-        setFavorite(data.favorites.includes(slug));
+        setFavorite(data.favorites.includes(slug) || (previousSlug ? data.favorites.includes(previousSlug) : false));
         setLoaded(true);
       }
     }).catch(() => {});
     return () => { current = false; };
-  }, [session?.user.id, slug]);
+  }, [session?.user.id, slug, previousSlug]);
 
   async function toggle() {
     setPending(true);

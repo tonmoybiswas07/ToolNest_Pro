@@ -4,7 +4,7 @@ import { categoryIds } from "@/features/tools/registry";
 
 export const metadata: Metadata = {
   title: "Tools Directory",
-  description: "Search the ToolNest Pro catalog and explore planned tools by category.",
+  description: "Search the ToolNest Pro catalog and explore tools by category.",
 };
 
 export default async function ToolsPage({ searchParams }: { searchParams: Promise<{ category?: string | string[] }> }) {
@@ -15,7 +15,7 @@ export default async function ToolsPage({ searchParams }: { searchParams: Promis
     <section className="shell section-space">
       <div className="mb-8 max-w-2xl">
         <h1 className="page-title">Tools directory</h1>
-        <p className="mt-3 text-lg text-muted-foreground">Find planned tools for images, documents, code, and more.</p>
+        <p className="mt-3 text-lg text-muted-foreground">Find tools for images, documents, code, and more.</p>
       </div>
       <Directory key={initialCategory} initialCategory={initialCategory} />
     </section>

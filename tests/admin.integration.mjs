@@ -183,16 +183,14 @@ async function verify() {
   assert.equal(lookup.rows[0].email, member.email);
   assert.deepEqual(lookup.rows[0].providers, ["credential"]);
   assert.ok(!JSON.stringify(lookup).includes(password));
-  await db
-    .collection("user")
-    .insertMany(
-      Array.from({ length: 21 }, (_, index) => ({
-        name: `Pagination ${index}`,
-        email: `p${index}@example.com`,
-        createdAt: new Date(),
-        role: "user",
-      })),
-    );
+  await db.collection("user").insertMany(
+    Array.from({ length: 21 }, (_, index) => ({
+      name: `Pagination ${index}`,
+      email: `p${index}@example.com`,
+      createdAt: new Date(),
+      role: "user",
+    })),
+  );
   const secondPage = await (
     await request("/api/admin?q=pagination&page=2&order=oldest", owner)
   ).json();
@@ -347,6 +345,73 @@ async function verify() {
     0,
   );
 
+  const execution = { type: "executed", id: randomUUID(), slug: "json-studio" };
+  assert.equal((await analytics(execution)).status, 204);
+  assert.equal((await analytics(execution)).status, 204);
+  assert.equal(
+    (await analytics({ ...execution, id: randomUUID(), userId: owner.id }))
+      .status,
+    400,
+  );
+  assert.equal(
+    (
+      await analytics({
+        ...execution,
+        id: randomUUID(),
+        rawInput: "private input",
+      })
+    ).status,
+    400,
+  );
+  assert.equal(
+    (
+      await analytics({
+        ...execution,
+        id: randomUUID(),
+        slug: "image-compressor",
+      })
+    ).status,
+    400,
+  );
+  assert.equal(
+    (
+      await analytics({
+        type: "failed",
+        id: randomUUID(),
+        slug: "jwt-inspector",
+      })
+    ).status,
+    204,
+  );
+  assert.equal(
+    await db
+      .collection("tool_usage_events")
+      .countDocuments({
+        type: "executed",
+        userId: member.id,
+        slug: "json-studio",
+      }),
+    1,
+  );
+  assert.equal(
+    await db
+      .collection("tool_usage_events")
+      .countDocuments({
+        type: "failed",
+        userId: member.id,
+        slug: "jwt-inspector",
+      }),
+    1,
+  );
+  const usage = await (await request("/admin/tools?days=7", owner)).text();
+  assert.match(usage, /JSON Studio/);
+  assert.match(usage, /Successful executions/);
+  const personal = await (
+    await request("/dashboard", { cookie: refreshed })
+  ).text();
+  assert.match(personal, /Recently used tools/);
+  assert.match(personal, /JSON Studio/);
+
   const report = await (await request("/admin/searches?days=7", owner)).text();
   assert.match(report, /50\.0%/);
   assert.equal(
@@ -369,11 +434,9 @@ async function verify() {
   assert.equal((await search(randomUUID())).status, 204);
   assert.equal(await searchCollection.countDocuments(), 2);
   assert.equal(
-    await db
-      .collection("admin_audit_logs")
-      .countDocuments({
-        action: { $in: ["suspend", "reactivate", "settings"] },
-      }),
+    await db.collection("admin_audit_logs").countDocuments({
+      action: { $in: ["suspend", "reactivate", "settings"] },
+    }),
     3,
   );
 
@@ -425,8 +488,17 @@ async function verify() {
     changeRole("revoke", owner.id, member.id),
     changeRole("revoke", member.id, owner.id),
   ]);
-  assert.equal(concurrentRevocations.filter(result => result.status === "fulfilled").length, 1);
-  assert.equal(await db.collection("user").countDocuments({ role: "admin", banned: { $ne: true } }), 1);
+  assert.equal(
+    concurrentRevocations.filter((result) => result.status === "fulfilled")
+      .length,
+    1,
+  );
+  assert.equal(
+    await db
+      .collection("user")
+      .countDocuments({ role: "admin", banned: { $ne: true } }),
+    1,
+  );
 
   console.log("Phase 3 integration checks passed.");
 }

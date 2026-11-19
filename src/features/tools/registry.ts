@@ -1,8 +1,8 @@
 import {
-  Binary, Braces, Calculator, CaseSensitive, Clock, CodeXml, Crop,
+  Braces, Calculator, CaseSensitive, Clock, CodeXml, Crop,
   FileImage, Files, FileText, Fingerprint, Hash, Image, Instagram,
-  Link, ListFilter, LockKeyhole, Music2, Palette, Percent, QrCode, Regex,
-  Ruler, ScanLine, Scissors, Share2, Shrink, Stamp, Type, Video, WrapText,
+  Link, Layers3, LockKeyhole, Music2, NotebookPen, Palette, Percent, QrCode, Regex,
+  Ruler, ScanLine, Scissors, ShieldCheck, Share2, Shrink, Sparkles, Stamp, Type, Video,
   type LucideIcon,
 } from "lucide-react";
 
@@ -25,6 +25,8 @@ type ToolDefinition = {
   category: CategoryId;
   description: string;
   icon: LucideIcon;
+  previousSlug?: string;
+  available?: true;
 };
 
 const definitions: ToolDefinition[] = [
@@ -38,21 +40,21 @@ const definitions: ToolDefinition[] = [
   { slug: "pdf-compressor", name: "PDF Compressor", category: "document", description: "Reduce PDF file sizes for easier sharing.", icon: Shrink },
   { slug: "pdf-to-image", name: "PDF to Image", category: "document", description: "Export PDF pages as individual images.", icon: FileImage },
   { slug: "image-to-pdf", name: "Image to PDF", category: "document", description: "Turn one or more images into a PDF.", icon: FileText },
-  { slug: "json-formatter", name: "JSON Formatter", category: "developer", description: "Format and validate JSON for easier reading.", icon: Braces },
-  { slug: "base64-converter", name: "Base64 Encoder & Decoder", category: "developer", description: "Encode text to Base64 or decode it back.", icon: Binary },
+  { slug: "json-studio", name: "JSON Studio", category: "developer", description: "Format, compare, and inspect JSON or generate TypeScript types.", icon: Braces, available: true, previousSlug: "json-formatter" },
+  { slug: "jwt-inspector", name: "JWT Inspector", category: "developer", description: "Decode JWT claims locally and inspect token timing.", icon: ShieldCheck, available: true, previousSlug: "base64-converter" },
   { slug: "url-encoder", name: "URL Encoder & Decoder", category: "developer", description: "Encode and decode URL components.", icon: Link },
-  { slug: "regex-tester", name: "Regex Tester", category: "developer", description: "Preview regular expression matches against sample text.", icon: Regex },
+  { slug: "regex-lab", name: "Regex Lab", category: "developer", description: "Test regular expressions and explore capture groups.", icon: Regex, available: true, previousSlug: "regex-tester" },
   { slug: "hash-generator", name: "Hash Generator", category: "developer", description: "Generate hashes from text for comparison or verification.", icon: Hash },
   { slug: "word-counter", name: "Word Counter", category: "text", description: "Count words, characters, and lines in pasted text.", icon: Type },
   { slug: "case-converter", name: "Case Converter", category: "text", description: "Switch between uppercase, lowercase, and other text styles.", icon: CaseSensitive },
-  { slug: "text-diff", name: "Text Diff Checker", category: "text", description: "Compare two versions of text and highlight changed lines.", icon: Files },
-  { slug: "duplicate-line-remover", name: "Duplicate Line Remover", category: "text", description: "Clean up a list by removing repeated lines.", icon: ListFilter },
-  { slug: "lorem-ipsum-generator", name: "Lorem Ipsum Generator", category: "text", description: "Generate placeholder text for layouts and prototypes.", icon: WrapText },
+  { slug: "code-diff-studio", name: "Code Diff Studio", category: "developer", description: "Compare code side by side and export a unified patch.", icon: CodeXml, available: true, previousSlug: "text-diff" },
+  { slug: "smart-notes-studio", name: "Smart Notes Studio", category: "text", description: "Write, organize, and export private Markdown notes.", icon: NotebookPen, available: true, previousSlug: "duplicate-line-remover" },
+  { slug: "prompt-builder", name: "Prompt Builder", category: "text", description: "Compose structured prompts and save reusable templates locally.", icon: Sparkles, available: true, previousSlug: "lorem-ipsum-generator" },
   { slug: "color-converter", name: "Color Converter", category: "design", description: "Convert color values between HEX, RGB, and HSL.", icon: Palette },
-  { slug: "palette-generator", name: "Palette Generator", category: "design", description: "Build a coordinated palette for a design project.", icon: Palette },
-  { slug: "gradient-builder", name: "CSS Gradient Builder", category: "design", description: "Create gradients and copy the matching CSS.", icon: CodeXml },
-  { slug: "contrast-checker", name: "Contrast Checker", category: "design", description: "Check contrast between text and background colors.", icon: ScanLine },
-  { slug: "qr-code-generator", name: "QR Code Generator", category: "design", description: "Create a QR code from a link or text.", icon: QrCode },
+  { slug: "color-system-generator", name: "Color System Generator", category: "design", description: "Generate shades, tokens, and WCAG contrast ratios.", icon: Palette, available: true, previousSlug: "palette-generator" },
+  { slug: "gradient-studio", name: "Gradient Studio", category: "design", description: "Build linear and radial gradients and export CSS.", icon: Palette, available: true, previousSlug: "gradient-builder" },
+  { slug: "glassmorphism-builder", name: "Glassmorphism Builder", category: "design", description: "Design glass effects and export matching CSS.", icon: Layers3, available: true, previousSlug: "contrast-checker" },
+  { slug: "qr-code-studio", name: "QR Code Studio", category: "design", description: "Create and export QR codes for links, text, Wi-Fi, and contacts.", icon: QrCode, available: true, previousSlug: "qr-code-generator" },
   { slug: "password-generator", name: "Password Generator", category: "utility", description: "Generate a password with configurable length and characters.", icon: LockKeyhole },
   { slug: "uuid-generator", name: "UUID Generator", category: "utility", description: "Generate unique identifiers for tests and records.", icon: Fingerprint },
   { slug: "unit-converter", name: "Unit Converter", category: "utility", description: "Convert units of length, weight, temperature, and more.", icon: Ruler },
@@ -63,12 +65,12 @@ const definitions: ToolDefinition[] = [
   { slug: "threads-video-downloader", name: "Threads Video Downloader", category: "social", description: "A planned downloader for Threads video links.", icon: Video },
 ];
 
-export const tools = definitions.map((tool) => ({ ...tool, status: "Coming Soon" as const }));
+export const tools = definitions.map(({ available, ...tool }) => ({ ...tool, status: available ? "Available" as const : "Coming Soon" as const }));
 export type Tool = (typeof tools)[number];
 
 const featuredSlugs = new Set([
-  "image-compressor", "pdf-merger", "json-formatter", "word-counter",
-  "qr-code-generator", "instagram-video-downloader",
+  "image-compressor", "pdf-merger", "json-studio", "word-counter",
+  "qr-code-studio", "instagram-video-downloader",
 ]);
 
 export const featuredTools = tools.filter((tool) => featuredSlugs.has(tool.slug));

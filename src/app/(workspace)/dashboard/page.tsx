@@ -26,12 +26,15 @@ export default async function DashboardPage() {
         <Button variant="outline" asChild>
           <Link href="/settings#privacy">Privacy settings</Link>
         </Button>
+        <Button variant="outline" asChild>
+          <Link href="/tools">Browse tools</Link>
+        </Button>
         <LogoutButton />
       </div>
       {activity ? (
         <div className="mt-8 grid gap-4 sm:grid-cols-2">
           {[
-            { title: "Recently opened tools", entries: activity.recent },
+            { title: "Recently used tools", entries: activity.recent },
             { title: "Favorite tools", entries: activity.favorites },
           ].map(({ title, entries }) => (
             <section key={title} className="surface p-5">

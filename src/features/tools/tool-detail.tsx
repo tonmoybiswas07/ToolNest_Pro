@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Clock3 } from "lucide-react";
 import { ToolControls } from "@/features/analytics/tool-controls";
+import { Studio } from "./studios/studio";
 import { Button } from "@/components/ui/button";
 import { ToolCard } from "./cards";
 import { categories, tools, type Tool } from "./registry";
@@ -39,9 +40,9 @@ export function ToolDetail({ tool }: { tool: Tool }) {
         <p className="mt-3 text-lg text-muted-foreground">{tool.description}</p>
       </div>
       <div className="mt-5">
-        <ToolControls key={tool.slug} slug={tool.slug} />
+        <ToolControls key={tool.slug} slug={tool.slug} previousSlug={tool.previousSlug} />
       </div>
-      <section
+      {tool.status === "Available" ? <Studio slug={tool.slug} /> : <section
         className="surface mt-8 grid justify-items-center gap-4 px-5 py-12 text-center sm:py-16"
         aria-labelledby="availability"
       >
@@ -57,7 +58,7 @@ export function ToolDetail({ tool }: { tool: Tool }) {
         <Button variant="outline" asChild>
           <Link href="/tools">Explore the catalog</Link>
         </Button>
-      </section>
+      </section>}
       <section className="mt-12" aria-labelledby="related">
         <h2 id="related" className="section-title mb-5">
           More in {category.name}

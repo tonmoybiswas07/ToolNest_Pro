@@ -1,6 +1,6 @@
 # ToolNest Pro
 
-ToolNest Pro is a Next.js catalog for 33 planned tools. Phase 2 adds accounts and sessions. Phase 3 adds the role-protected admin dashboard and activity reporting.
+ToolNest Pro is a Next.js catalog for 33 tools. Phase 2 adds accounts and sessions. Phase 3 adds the role-protected admin dashboard and activity reporting.
 
 ## Run locally
 
@@ -78,10 +78,24 @@ The role workflow and web moderation share a transactional guard. They reject ch
 - `activity_events`, `tool_usage_events`, and `search_analytics` have timestamp and expiry indexes. The default retention is 30 days, adjustable from 7 to 90 days for newly recorded events. Additional indexes cover user lookups and activity type. MongoDB TTL cleanup is asynchronous.
 - `admin_settings` stores global settings and user preferences. `admin_audit_logs` is indexed by date and administrator and retained indefinitely by the application. Set a separate operational retention policy as needed. The application offers no audit mutation endpoints.
 - Failed credential responses are recorded without email or user ID. OAuth failures are excluded when their outcome cannot be attributed reliably. Logout is recorded with an active session. Export and account-deletion workflows are unavailable.
-- Tool pages record opens and actual favorite changes. Execution metrics only count execution outcomes. Phase 3 leaves all planned tool engines unimplemented.
+- Tool pages record opens and actual favorite changes. Execution metrics only count execution outcomes. Phase 4 implements ten browser-based studios. The other 23 catalog entries are still planned.
 
 Run the Phase 3 integration suite after a production build with a local MongoDB replica set. The suite creates and drops a randomly named database on loopback.
 
 ```sh
 TOOLNEST_TEST_MONGO='mongodb://127.0.0.1:37129/?replicaSet=toolnest-qa' node tests/admin.integration.mjs
+```
+
+### Browser studios
+
+The ten available studios process JSON, JWTs, regex input, code, QR data, prompts, and notes in the browser. The analytics endpoint receives only the registry slug, an operation outcome, and an event ID. It derives user identity from the session and rate-limits submissions. Execution counts are best-effort because the operations run on the client.
+
+Saved gradient presets, prompt templates, and notes live in this browser's local storage. Export any work you want to keep before clearing site data or switching devices. Notes render Markdown with raw HTML and external image loading disabled.
+
+The 33-entry catalog includes ten available studios and 23 planned entries. The ten former placeholder URLs for those slots redirect to the studio URLs.
+
+Run the studio engine tests on Node.js 24 with:
+
+```sh
+node --experimental-strip-types --test tests/studios.test.mjs
 ```

@@ -14,13 +14,13 @@ export async function personalAnalytics(userId: string) {
   const [prefs, recent, searches, executionCount] = await Promise.all([
     preferences().findOne({ _id: `user:${userId}` }),
     db.collection("tool_usage_events").aggregate([
-      { $match: { userId, type: "opened", expiresAt: { $gt: new Date() } } },
+      { $match: { userId, type: { $in: ["opened", "executed", "failed"] }, expiresAt: { $gt: new Date() } } },
       { $group: { _id: "$slug", last: { $max: "$at" } } }, { $sort: { last: -1 } }, { $limit: 8 },
     ]).toArray(),
     db.collection("search_analytics").find({ userId, expiresAt: { $gt: new Date() } }, { projection: { keyword: 1, at: 1 } }).sort({ at: -1 }).limit(15).toArray(),
     db.collection("tool_usage_events").countDocuments({ userId, type: "executed", expiresAt: { $gt: new Date() } }),
   ]);
-  const find = (slug: unknown) => tools.find(tool => tool.slug === slug);
+  const find = (slug: unknown) => tools.find(tool => tool.slug === slug || tool.previousSlug === slug);
   return {
     consent: prefs?.consent === true,
     favorites: (prefs?.favorites ?? []).flatMap(slug => find(slug) ?? []),

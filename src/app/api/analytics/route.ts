@@ -12,6 +12,7 @@ const keyword = z.string().max(100).refine(value => tools.some(tool => tool.slug
 const schema = z.discriminatedUnion("type", [
   z.strictObject({ type: z.literal("search"), id: z.uuid(), keyword: keyword.optional(), zero: z.boolean() }),
   z.strictObject({ type: z.literal("opened"), id: z.uuid(), slug, searchId: z.uuid().optional() }),
+  z.strictObject({ type: z.enum(["executed", "failed"]), id: z.uuid(), slug: slug.refine(value => tools.some(tool => tool.slug === value && tool.status === "Available")) }),
   z.strictObject({ type: z.literal("favorite"), slug, enabled: z.boolean() }),
   z.strictObject({ type: z.literal("consent"), enabled: z.boolean() }),
   z.strictObject({ type: z.literal("delete_history") }),
@@ -43,7 +44,7 @@ export async function POST(request: Request) {
     const event = parsed.data;
     const session = await getSession();
     const userId = session?.user.id;
-    if (!userId && event.type !== "search" && event.type !== "opened") return new Response(null, { status: 401 });
+    if (!userId && event.type !== "search" && event.type !== "opened" && event.type !== "executed" && event.type !== "failed") return new Response(null, { status: 401 });
     if (rateLimited(userId ?? "anonymous", userId ? 35 : 180)) return new Response(null, { status: 429 });
 
     const { client, db } = applicationMongo();
@@ -72,10 +73,14 @@ export async function POST(request: Request) {
       if (config.searchEnabled && event.searchId) {
         await searches.updateOne({ _id: event.searchId, at: { $gte: new Date(Date.now() - 600000) }, zero: false }, { $set: { converted: true } });
       }
+    } else if (event.type === "executed" || event.type === "failed") {
+      const id = createHash("sha256").update(`execution:${userId ?? "anonymous"}:${event.id}`).digest("hex");
+      await usage.updateOne({ _id: id }, { $setOnInsert: { slug: event.slug, type: event.type, ...(userId ? { userId } : {}), at, expiresAt } }, { upsert: true });
     } else if (event.type === "favorite" && userId) {
       const _id = `user:${userId}`;
       await client.withSession(transaction => transaction.withTransaction(async () => {
-        const operation = event.enabled ? { $addToSet: { favorites: event.slug } } : { $pull: { favorites: event.slug } };
+        const previousSlug = tools.find(tool => tool.slug === event.slug)?.previousSlug;
+        const operation = event.enabled ? { $addToSet: { favorites: event.slug } } : { $pull: { favorites: { $in: previousSlug ? [event.slug, previousSlug] : [event.slug] } } };
         const changed = await preferences().updateOne({ _id }, operation, { upsert: event.enabled, session: transaction });
         if (changed.modifiedCount || changed.upsertedCount) await db.collection("tool_usage_events").insertOne({
           slug: event.slug, type: event.enabled ? "favorite_added" : "favorite_removed", userId, at, expiresAt,

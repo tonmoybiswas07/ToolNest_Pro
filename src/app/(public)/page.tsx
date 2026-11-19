@@ -13,7 +13,7 @@ export default function Home() {
           <div className="relative z-10">
             <span className="eyebrow"><Sparkles size={15} aria-hidden /> The all-in-one toolkit</span>
             <h1 className="hero-title">Everyday tools.<br /><span>One workspace.</span></h1>
-            <p className="mt-6 max-w-md text-lg leading-relaxed text-muted-foreground">Explore {tools.length} planned tools for images, PDFs, code, design, and the tasks in between.</p>
+            <p className="mt-6 max-w-md text-lg leading-relaxed text-muted-foreground">Explore {tools.length} tools for images, PDFs, code, design, and the tasks in between.</p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Button size="lg" asChild><Link href="/tools"><LayoutGrid size={17} aria-hidden /> Browse tools</Link></Button>
               <Button variant="outline" size="lg" asChild><Link href="#categories">View categories</Link></Button>
@@ -26,7 +26,7 @@ export default function Home() {
         <div className="mb-7 flex flex-wrap items-end justify-between gap-4">
           <div>
             <h2 id="featured-heading" className="section-title">Featured tools</h2>
-            <p className="mt-2 text-muted-foreground">See what’s planned for the toolkit.</p>
+            <p className="mt-2 text-muted-foreground">Explore available and upcoming tools.</p>
           </div>
           <Button asChild variant="outline"><Link href="/tools">View all tools</Link></Button>
         </div>
