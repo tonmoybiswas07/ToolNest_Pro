@@ -3,7 +3,7 @@ import "server-only";
 import type { Document } from "mongodb";
 import { applicationMongo } from "@/lib/mongodb";
 import { analyticsIndexes } from "@/features/analytics/store";
-import { categories, tools, type CategoryId } from "@/features/tools/registry";
+import { categories, findTool, legacyToolRoutes, tools, type CategoryId } from "@/features/tools/registry";
 
 const day = 86400000;
 export const dateRanges = [7, 30, 90] as const;
@@ -43,6 +43,7 @@ export async function reports(days: number) {
     ]).next(),
     db.collection("tool_usage_events").aggregate([
       { $match: live },
+      { $set: { slug: { $switch: { branches: [...legacyToolRoutes].map(([old, target]) => ({ case: { $eq: ["$slug", old] }, then: target.slug })), default: "$slug" } } } },
       {
         $facet: {
           executions: [{ $match: { type: { $in: ["executed", "failed"] } } }, {
@@ -113,7 +114,7 @@ export async function reports(days: number) {
     growth: series(registrations), successful: series(successful), failures: series(failures), active: series(active),
     searches: series(searchCount), zero: sum(zeroCount), converted: sum(conversions),
     terms: (search?.terms as Document[] | undefined ?? []).map(row => ({
-      label: tools.find(tool => tool.slug === row._id)?.name ?? (Object.hasOwn(categories, row._id) ? categories[row._id as CategoryId].name : "Unknown"),
+      label: findTool(String(row._id))?.name ?? (Object.hasOwn(categories, row._id) ? categories[row._id as CategoryId].name : "Unknown"),
       value: Number(row.count),
     })),
     toolRows, categoryRows, usageTrend: series(usageTrend), unique: Number(usage?.overallUsers[0]?.count ?? 0),

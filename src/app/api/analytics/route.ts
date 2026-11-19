@@ -3,7 +3,7 @@ import { z } from "zod";
 import { sameOrigin } from "@/features/admin/access";
 import { analyticsIndexes, expiry, settings } from "@/features/analytics/store";
 import { preferences } from "@/features/analytics/personal";
-import { categories, tools } from "@/features/tools/registry";
+import { categories, legacyToolRoutes, tools } from "@/features/tools/registry";
 import { applicationMongo } from "@/lib/mongodb";
 import { getSession } from "@/lib/session";
 
@@ -79,8 +79,8 @@ export async function POST(request: Request) {
     } else if (event.type === "favorite" && userId) {
       const _id = `user:${userId}`;
       await client.withSession(transaction => transaction.withTransaction(async () => {
-        const previousSlug = tools.find(tool => tool.slug === event.slug)?.previousSlug;
-        const operation = event.enabled ? { $addToSet: { favorites: event.slug } } : { $pull: { favorites: { $in: previousSlug ? [event.slug, previousSlug] : [event.slug] } } };
+        const aliases = [...legacyToolRoutes].filter(([, target]) => target.slug === event.slug).map(([key]) => key);
+        const operation = event.enabled ? { $addToSet: { favorites: event.slug } } : { $pull: { favorites: { $in: [event.slug, ...aliases] } } };
         const changed = await preferences().updateOne({ _id }, operation, { upsert: event.enabled, session: transaction });
         if (changed.modifiedCount || changed.upsertedCount) await db.collection("tool_usage_events").insertOne({
           slug: event.slug, type: event.enabled ? "favorite_added" : "favorite_removed", userId, at, expiresAt,

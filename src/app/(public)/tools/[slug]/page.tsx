@@ -1,19 +1,19 @@
 import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
 import { ToolDetail } from "@/features/tools/tool-detail";
-import { tools } from "@/features/tools/registry";
+import { findTool, legacyToolRoutes, tools } from "@/features/tools/registry";
 
 type ToolPageProps = { params: Promise<{ slug: string }> };
 
 export const dynamicParams = false;
 
 export function generateStaticParams() {
-  return tools.flatMap(({ slug, previousSlug }) => previousSlug ? [{ slug }, { slug: previousSlug }] : [{ slug }]);
+  return [...tools.map(tool => tool.slug), ...legacyToolRoutes.keys()].map(slug => ({ slug }));
 }
 
 export async function generateMetadata({ params }: ToolPageProps): Promise<Metadata> {
   const { slug } = await params;
-  const tool = tools.find((entry) => entry.slug === slug || entry.previousSlug === slug);
+  const tool = findTool(slug);
   if (!tool) notFound();
 
   return { title: tool.status === "Available" ? tool.name : `${tool.name} — Coming Soon`, description: tool.description };
@@ -21,9 +21,12 @@ export async function generateMetadata({ params }: ToolPageProps): Promise<Metad
 
 export default async function ToolPage({ params }: ToolPageProps) {
   const { slug } = await params;
-  const tool = tools.find((entry) => entry.slug === slug || entry.previousSlug === slug);
+  const tool = findTool(slug);
   if (!tool) notFound();
 
-  if (slug !== tool.slug) permanentRedirect(`/tools/${tool.slug}`);
+  if (slug !== tool.slug) {
+    const mode = legacyToolRoutes.get(slug)?.mode;
+    permanentRedirect(`/tools/${tool.slug}${mode ? `?mode=${mode}` : ""}`);
+  }
   return <ToolDetail tool={tool} />;
 }

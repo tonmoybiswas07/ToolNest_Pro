@@ -368,7 +368,7 @@ async function verify() {
       await analytics({
         ...execution,
         id: randomUUID(),
-        slug: "image-compressor",
+        slug: "color-converter",
       })
     ).status,
     400,
@@ -403,9 +403,18 @@ async function verify() {
       }),
     1,
   );
+  const pdfUsage = { type: "executed", id: randomUUID(), slug: "pdf-toolkit" };
+  assert.equal((await analytics(pdfUsage)).status, 204);
+  assert.equal((await analytics({ ...pdfUsage, slug: "image-to-pdf" })).status, 400);
+  await db.collection("tool_usage_events").insertOne({
+    type: "executed", slug: "image-to-pdf", userId: member.id, at: new Date(),
+    expiresAt: new Date(Date.now() + 86400000),
+  });
+
   const usage = await (await request("/admin/tools?days=7", owner)).text();
   assert.match(usage, /JSON Studio/);
   assert.match(usage, /Successful executions/);
+  assert.match(usage, /<td>PDF Toolkit<\/td><td>Documents<\/td><td>2<\/td><td>1<\/td>/);
   const personal = await (
     await request("/dashboard", { cookie: refreshed })
   ).text();

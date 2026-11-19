@@ -4,7 +4,7 @@ ToolNest Pro is a Next.js catalog for 33 tools. Phase 2 adds accounts and sessio
 
 ## Run locally
 
-Use Node.js 20.19 or newer and install the locked dependencies with `npm ci`. Copy `.env.example` to `.env.local`, fill in the values below, and run `npm run dev`. Open `http://localhost:3000` using the same hostname as `BETTER_AUTH_URL`.
+Use Node.js 22.13 or newer (Node.js 24 is tested) and install the locked dependencies with `npm ci`. Copy `.env.example` to `.env.local`, fill in the values below, and run `npm run dev`. Open `http://localhost:3000` using the same hostname as `BETTER_AUTH_URL`.
 
 | Variable | Value |
 | --- | --- |
@@ -78,7 +78,7 @@ The role workflow and web moderation share a transactional guard. They reject ch
 - `activity_events`, `tool_usage_events`, and `search_analytics` have timestamp and expiry indexes. The default retention is 30 days, adjustable from 7 to 90 days for newly recorded events. Additional indexes cover user lookups and activity type. MongoDB TTL cleanup is asynchronous.
 - `admin_settings` stores global settings and user preferences. `admin_audit_logs` is indexed by date and administrator and retained indefinitely by the application. Set a separate operational retention policy as needed. The application offers no audit mutation endpoints.
 - Failed credential responses are recorded without email or user ID. OAuth failures are excluded when their outcome cannot be attributed reliably. Logout is recorded with an active session. Export and account-deletion workflows are unavailable.
-- Tool pages record opens and actual favorite changes. Execution metrics only count execution outcomes. Phase 4 implements ten browser-based studios. The other 23 catalog entries are still planned.
+- Tool pages record opens and actual favorite changes. Execution metrics only count execution outcomes. Phases 4 and 5 implement 20 browser-based tools. The other 13 catalog entries are still planned.
 
 Run the Phase 3 integration suite after a production build with a local MongoDB replica set. The suite creates and drops a randomly named database on loopback.
 
@@ -92,10 +92,20 @@ The ten available studios process JSON, JWTs, regex input, code, QR data, prompt
 
 Saved gradient presets, prompt templates, and notes live in this browser's local storage. Export any work you want to keep before clearing site data or switching devices. Notes render Markdown with raw HTML and external image loading disabled.
 
-The 33-entry catalog includes ten available studios and 23 planned entries. The ten former placeholder URLs for those slots redirect to the studio URLs.
+The 33-entry catalog includes 20 available tools and 13 planned entries. Former placeholder URLs for renamed tools redirect to their canonical URLs.
 
 Run the studio engine tests on Node.js 24 with:
 
 ```sh
 node --experimental-strip-types --test tests/studios.test.mjs
 ```
+
+### Image and PDF processing
+
+- Image tools accept JPG, PNG, and WebP. Pixel and file size limits are shown in each workspace. Canvas export re-encodes the visible image, discards metadata, and exports a single frame from animated inputs. PNG output uses lossless encoding, although size can increase. JPEG flattens transparency against the chosen background.
+- Background Remover is designed for photos of people. It runs the MediaPipe Selfie Segmentation model locally in a worker and lazily fetches a pinned runtime and model (about 10 MB) from jsDelivr and Google Cloud Storage. Edge quality varies, and the browser needs WebAssembly and compatible graphics support. See the [model card](https://storage.googleapis.com/mediapipe-assets/Model%20Card%20MediaPipe%20Selfie%20Segmentation.pdf).
+- PDF tools reject encrypted files. PDF Toolkit opens in edit mode by default. The legacy `/tools/pdf-to-image` and `/tools/image-to-pdf` URLs open their matching modes in `/tools/pdf-toolkit`. PDF.js renders thumbnails and rasterized output in the browser. Interactive annotations are excluded from rendered output. Scanned pages stay image-based.
+- PDF compression defaults to a structural repack that leaves existing image streams intact. Actual byte counts are compared, and output can be larger. Explicit JPEG rasterization creates an image-only PDF and can remove text search, vectors, links, forms, annotations, and accessibility features.
+- Editing, merging, splitting, or repacking can invalidate signatures. Copying pages may change forms, annotations, bookmarks, or links. The PDF Toolkit watermark font supports Western Latin text.
+- An explicit processing run records one outcome per batch and canonical tool. Previews, file selection, cancellations, and repeat downloads do not count as executions. Historical aliases are grouped under the canonical tool when reporting.
+- Run file-processing tests with `node --experimental-strip-types --test tests/file-processing.test.mjs`.

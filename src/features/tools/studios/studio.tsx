@@ -10,7 +10,21 @@ const loading = () => (
   </div>
 );
 
+const imageEssentials = dynamic(() => import("../file-processing/image-essentials"), { ssr: false, loading });
+const advancedImages = dynamic(() => import("../file-processing/advanced-image"), { ssr: false, loading });
+const pdfWorkspaces = dynamic(() => import("../file-processing/pdf-workspaces"), { ssr: false, loading });
+
 const studios: Record<string, ComponentType<StudioProps>> = {
+  "image-compressor": imageEssentials,
+  "image-converter": imageEssentials,
+  "image-resizer": imageEssentials,
+  "background-remover": advancedImages,
+  "image-editor": advancedImages,
+  "social-media-image-studio": advancedImages,
+  "pdf-merger": pdfWorkspaces,
+  "pdf-splitter": pdfWorkspaces,
+  "pdf-compressor": pdfWorkspaces,
+  "pdf-toolkit": pdfWorkspaces,
   "json-studio": dynamic(() => import("./json-studio"), {
     ssr: false,
     loading,

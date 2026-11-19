@@ -1,6 +1,6 @@
 import { personalAnalytics } from "@/features/analytics/personal";
 import { PrivacyControls } from "@/features/analytics/privacy-controls";
-import { categories, tools, type CategoryId } from "@/features/tools/registry";
+import { categories, findTool, type CategoryId } from "@/features/tools/registry";
 import type { Metadata } from "next";
 import { LogoutButton } from "@/features/auth/logout-button";
 import { requireSession } from "@/lib/session";
@@ -49,7 +49,7 @@ export default async function SettingsPage() {
               <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
                 {data.searches.map((row) => (
                   <li key={String(row._id)}>
-                    {tools.find((tool) => tool.slug === row.keyword)?.name ??
+                    {findTool(String(row.keyword))?.name ??
                       categories[row.keyword as CategoryId]?.name}
                   </li>
                 ))}

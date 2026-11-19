@@ -30,16 +30,16 @@ type ToolDefinition = {
 };
 
 const definitions: ToolDefinition[] = [
-  { slug: "image-compressor", name: "Image Compressor", category: "image", description: "Reduce image file sizes for faster sharing.", icon: Shrink },
-  { slug: "image-resizer", name: "Image Resizer", category: "image", description: "Set new dimensions for an image.", icon: ScanLine },
-  { slug: "image-converter", name: "Image Converter", category: "image", description: "Convert images between common file formats.", icon: FileImage },
-  { slug: "image-cropper", name: "Image Cropper", category: "image", description: "Crop images to a specific area or aspect ratio.", icon: Crop },
-  { slug: "image-watermark", name: "Image Watermark", category: "image", description: "Add a text or image watermark to a picture.", icon: Stamp },
-  { slug: "pdf-merger", name: "PDF Merger", category: "document", description: "Combine multiple PDFs into one file.", icon: Files },
-  { slug: "pdf-splitter", name: "PDF Splitter", category: "document", description: "Extract pages or split a PDF into smaller files.", icon: Scissors },
-  { slug: "pdf-compressor", name: "PDF Compressor", category: "document", description: "Reduce PDF file sizes for easier sharing.", icon: Shrink },
-  { slug: "pdf-to-image", name: "PDF to Image", category: "document", description: "Export PDF pages as individual images.", icon: FileImage },
-  { slug: "image-to-pdf", name: "Image to PDF", category: "document", description: "Turn one or more images into a PDF.", icon: FileText },
+  { slug: "image-compressor", name: "Image Compressor", category: "image", description: "Reduce JPG, PNG, and WebP file sizes and compare the actual output.", icon: Shrink, available: true },
+  { slug: "image-resizer", name: "Image Resizer", category: "image", description: "Crop and resize images to precise dimensions.", icon: ScanLine, available: true },
+  { slug: "image-converter", name: "Image Converter", category: "image", description: "Batch-convert images between JPG, PNG, and WebP.", icon: FileImage, available: true },
+  { slug: "image-editor", name: "Image Editor", category: "image", description: "Crop, rotate, flip, and adjust images in your browser.", icon: Crop, available: true, previousSlug: "image-cropper" },
+  { slug: "social-media-image-studio", name: "Social Media Image Studio", category: "image", description: "Design platform-sized images with text and image watermarks.", icon: Stamp, available: true, previousSlug: "image-watermark" },
+  { slug: "pdf-merger", name: "PDF Merge", category: "document", description: "Combine PDF documents in the order you choose.", icon: Files, available: true },
+  { slug: "pdf-splitter", name: "PDF Split", category: "document", description: "Extract ordered page ranges or export individual PDFs.", icon: Scissors, available: true },
+  { slug: "pdf-compressor", name: "PDF Compressor", category: "document", description: "Repack PDF objects or explicitly flatten pages to JPEG for smaller files.", icon: Shrink, available: true },
+  { slug: "pdf-toolkit", name: "PDF Toolkit", category: "document", description: "Edit PDF pages and convert between PDFs and images locally.", icon: FileText, available: true },
+  { slug: "background-remover", name: "Image Background Remover", category: "image", description: "Isolate people in photos and export transparent or solid-background PNGs.", icon: Image, available: true },
   { slug: "json-studio", name: "JSON Studio", category: "developer", description: "Format, compare, and inspect JSON or generate TypeScript types.", icon: Braces, available: true, previousSlug: "json-formatter" },
   { slug: "jwt-inspector", name: "JWT Inspector", category: "developer", description: "Decode JWT claims locally and inspect token timing.", icon: ShieldCheck, available: true, previousSlug: "base64-converter" },
   { slug: "url-encoder", name: "URL Encoder & Decoder", category: "developer", description: "Encode and decode URL components.", icon: Link },
@@ -67,6 +67,18 @@ const definitions: ToolDefinition[] = [
 
 export const tools = definitions.map(({ available, ...tool }) => ({ ...tool, status: available ? "Available" as const : "Coming Soon" as const }));
 export type Tool = (typeof tools)[number];
+
+export const legacyToolRoutes = new Map<string, { slug: string; mode?: string }>();
+for (const tool of tools) {
+  if (tool.previousSlug) legacyToolRoutes.set(tool.previousSlug, { slug: tool.slug });
+}
+legacyToolRoutes.set("pdf-to-image", { slug: "pdf-toolkit", mode: "pdf-to-image" });
+legacyToolRoutes.set("image-to-pdf", { slug: "pdf-toolkit", mode: "image-to-pdf" });
+legacyToolRoutes.set("pdf-merge", { slug: "pdf-merger" });
+legacyToolRoutes.set("pdf-split", { slug: "pdf-splitter" });
+
+export const canonicalToolSlug = (slug: string) => legacyToolRoutes.get(slug)?.slug ?? slug;
+export const findTool = (slug: string) => tools.find(tool => tool.slug === canonicalToolSlug(slug));
 
 const featuredSlugs = new Set([
   "image-compressor", "pdf-merger", "json-studio", "word-counter",
