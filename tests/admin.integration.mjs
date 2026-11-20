@@ -3,6 +3,7 @@ import { execFile, spawn } from "node:child_process";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { promisify } from "node:util";
 import { MongoClient, ObjectId } from "mongodb";
+import { signInOnlyTools, toolHref, tools } from "../src/features/tools/registry.ts";
 import { emptyStudent } from "../src/features/student/model.ts";
 
 const address = new URL(
@@ -92,6 +93,16 @@ function changeRole(operation, target, actor) {
   );
 }
 
+async function expectRedirect(response, target) {
+  if (response.status === 307) {
+    assert.equal(response.headers.get("location"), target);
+    return;
+  }
+  assert.equal(response.status, 200);
+  const markup = await response.text();
+  assert.ok(markup.includes(`http-equiv="refresh" content="1;url=${target}"`), target);
+}
+
 async function verify() {
   let ready;
   for (let index = 0; index < 70 && !ready; index++) {
@@ -114,12 +125,33 @@ async function verify() {
     const response = await request(`/tools/${legacy}`);
     assert.equal(response.status, 308, legacy);
     assert.equal(response.headers.get("location"), `/tools/${canonical}`);
-    assert.equal((await request(`/tools/${canonical}`)).status, 200);
+    const destination = `/tools/${canonical}`;
+    const target = await request(destination);
+    if (signInOnlyTools.has(canonical.split("?")[0])) {
+      await expectRedirect(target, "/login?next=" + encodeURIComponent(destination));
+    } else assert.equal(target.status, 200);
   }
 
   assert.equal((await request("/api/admin")).status, 401);
   assert.equal((await request("/admin")).headers.get("location"), "/login");
   const owner = await signup("Owner");
+  assert.equal(signInOnlyTools.size, 15);
+  for (const tool of tools) {
+    const path = toolHref(tool);
+    const response = await request(path);
+    if (signInOnlyTools.has(tool.slug)) {
+      await expectRedirect(response, `/login?next=${encodeURIComponent(path)}`);
+      assert.equal((await request(path, owner)).status, 200, tool.slug);
+    } else assert.equal(response.status, 200, tool.slug);
+  }
+  await expectRedirect(await request("/tools/pdf-toolkit?mode=pdf-to-image"),
+    "/login?next=" + encodeURIComponent("/tools/pdf-toolkit?mode=pdf-to-image"));
+  for (const next of ["//example.com", "https://example.com", "/tools/../admin", "/tools/assignment-tracker", "/tools/pdf-toolkit#invalid", "/tools/pdf-toolkit\\extra"]) {
+    await expectRedirect(await request("/login?next=" + encodeURIComponent(next), owner), "/dashboard");
+  }
+  await expectRedirect(await request("/login?next=" + encodeURIComponent("/student/tools/attendance-tracker"), owner), "/student/tools/attendance-tracker");
+  assert.equal((await request("/api/analytics", { body: { type: "opened", slug: "assignment-tracker", id: randomUUID() } })).status, 401);
+
   const escalation = await request("/api/auth/sign-up/email", {
     body: {
       name: "Member",

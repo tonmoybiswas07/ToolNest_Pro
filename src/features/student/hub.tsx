@@ -1,3 +1,4 @@
+import { ToolLoginBadge } from "@/features/tools/cards";
 import Link from "next/link";
 import { ArrowRight, CalendarDays, ClipboardList, NotebookPen, Timer } from "lucide-react";
 import { collections } from "./collections";
@@ -55,6 +56,7 @@ export function StudentLanding() {
                   <span className="min-w-0">
                     <span className="block font-semibold">{title}</span>
                     <span className="block text-sm text-muted-foreground">{description}</span>
+                    <span className="empty:hidden mt-1 block"><ToolLoginBadge slug={slug} /></span>
                   </span>
                   <ArrowRight size={17} className="ml-auto shrink-0" aria-hidden />
                 </Link>

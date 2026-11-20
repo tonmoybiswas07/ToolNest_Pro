@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import "@fontsource-variable/geist";
+import { EntryLoader, EntryLoaderScript } from "@/components/site/entry-loader";
 import { Providers } from "@/components/site/providers";
 import "./globals.css";
 
@@ -24,6 +25,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <body>
+        <EntryLoaderScript />
+        <EntryLoader />
         <a href="#main" className="skip-link">
           Skip to content
         </a>

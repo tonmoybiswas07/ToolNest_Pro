@@ -101,3 +101,21 @@ export const retiredTools = [
 ];
 export const toolHref = (tool: Tool) => tool.category === "student" ? `/student/tools/${tool.slug}` : `/tools/${tool.slug}`;
 export const studentTools = tools.filter(tool => tool.category === "student");
+
+export const signInOnlyTools: ReadonlySet<string> = new Set([
+  "assignment-tracker",
+  "class-routine-maker",
+  "attendance-tracker",
+  "flashcard-maker",
+  "exam-study-planner",
+  "social-media-image-studio",
+  "color-system-generator",
+  "background-remover",
+  "smart-notes-studio",
+  "prompt-builder",
+  "gradient-studio",
+  "glassmorphism-builder",
+  "code-diff-studio",
+  "regex-lab",
+  "pdf-toolkit",
+]);

@@ -1,9 +1,14 @@
 "use client";
 
+import { ToolLoginBadge } from "@/features/tools/cards";
+
 import { useState } from "react";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-import { studentTools, toolHref } from "@/features/tools/registry";
+import {
+  studentTools,
+  toolHref,
+} from "@/features/tools/registry";
 import { collections } from "./collections";
 
 export function StudentDirectory() {
@@ -36,18 +41,33 @@ export function StudentDirectory() {
               id={`collection-${i}`}
               className="scroll-mt-28"
             >
-              <h2 className="student-display mb-3 text-2xl">{collection.name}</h2>
+              <h2 className="student-display mb-3 text-2xl">
+                {collection.name}
+              </h2>
               <ul className="student-planner divide-y divide-[var(--student-rule)]">
                 {tools.map((tool) => (
                   <li key={tool.slug}>
                     <Link className="student-tool-row" href={toolHref(tool)}>
-                      <span className="student-tool-icon"><tool.icon size={19} aria-hidden /></span>
+                      <span className="student-tool-icon">
+                        <tool.icon size={19} aria-hidden />
+                      </span>
                       <span className="min-w-0">
                         <span className="block font-semibold">{tool.name}</span>
-                        <span className="block text-sm text-muted-foreground">{tool.description}</span>
-                        {tool.status === "Requires Setup" && <span className="mt-1 block text-xs font-semibold text-[var(--student-ink)]">{tool.status}</span>}
+                        <span className="block text-sm text-muted-foreground">
+                          {tool.description}
+                        </span>
+                        <span className="empty:hidden mt-1 block"><ToolLoginBadge slug={tool.slug} /></span>
+                        {tool.status === "Requires Setup" && (
+                          <span className="mt-1 block text-xs font-semibold text-[var(--student-ink)]">
+                            {tool.status}
+                          </span>
+                        )}
                       </span>
-                      <ArrowRight size={17} className="ml-auto shrink-0" aria-hidden />
+                      <ArrowRight
+                        size={17}
+                        className="ml-auto shrink-0"
+                        aria-hidden
+                      />
                     </Link>
                   </li>
                 ))}

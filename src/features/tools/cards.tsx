@@ -1,7 +1,23 @@
 import { toolHref } from "@/features/tools/registry";
 import Link from "next/link";
-import { ChevronRight } from "lucide-react";
-import { categories, tools, type CategoryId, type Tool } from "./registry";
+import { ChevronRight, LockKeyhole } from "lucide-react";
+import {
+  categories,
+  signInOnlyTools,
+  tools,
+  type CategoryId,
+  type Tool,
+} from "./registry";
+
+export function ToolLoginBadge({ slug }: { slug: string }) {
+  if (!signInOnlyTools.has(slug)) return null;
+  return (
+    <span className="inline-flex w-fit items-center gap-1.5 rounded-md border border-highlight/30 bg-highlight/10 px-2 py-1 text-xs leading-tight font-semibold text-highlight">
+      <LockKeyhole size={13} className="shrink-0" aria-hidden />
+      Login required
+    </span>
+  );
+}
 
 export function ToolCard({ tool }: { tool: Tool }) {
   const Icon = tool.icon;
@@ -15,7 +31,11 @@ export function ToolCard({ tool }: { tool: Tool }) {
         <span className="tile-icon" data-tone={categories[tool.category].tone}>
           <Icon size={21} aria-hidden />
         </span>
-        <span className="status-pill">{tool.status}</span>
+        {signInOnlyTools.has(tool.slug) ? (
+          <ToolLoginBadge slug={tool.slug} />
+        ) : (
+          <span className="status-pill">{tool.status}</span>
+        )}
       </div>
       <h3 className="mt-5 text-lg font-semibold tracking-tight">{tool.name}</h3>
       <p className="mt-1.5 flex-1 text-sm leading-relaxed text-muted-foreground">

@@ -66,6 +66,17 @@ try {
       ? route.continue()
       : route.abort(),
   );
+  // Keep the suite focused on UI behavior without exhausting the analytics limit.
+  await context.route(origin + "/api/analytics", (route) => {
+    const type = route.request().postDataJSON()?.type;
+    return ["opened", "executed", "failed"].includes(type)
+      ? route.fulfill({ status: 204 })
+      : route.continue();
+  });
+  await context.route(origin + "/api/student", async (route) => {
+    if (route.request().method() === "PUT") await pause(425);
+    return route.continue();
+  });
   const page = await context.newPage();
   page.setDefaultTimeout(10000);
   const pageErrors = [];
@@ -145,6 +156,45 @@ try {
   );
 
   await go("/student/settings", "Student settings");
+  await field("Course name").fill("Guest Course");
+  await field("Course code").fill("GUEST101");
+  await button("Add course").click();
+  await page
+    .getByRole("heading", { name: "Guest Course", exact: true })
+    .waitFor();
+  await go(toolPath("assignment-tracker"), "Sign in to ToolNest Pro");
+  assert.equal(
+    new URL(page.url()).searchParams.get("next"),
+    toolPath("assignment-tracker"),
+  );
+  await page
+    .getByRole("link", { name: "New to ToolNest Pro? Create an account" })
+    .click();
+  assert.equal(
+    new URL(page.url()).searchParams.get("next"),
+    toolPath("assignment-tracker"),
+  );
+  await field("Full name").fill("Browser student");
+  await field("Email address").fill("browser-student@example.com");
+  await field("Password").fill("Local-test-password!");
+  await field("Confirm password").fill("Local-test-password!");
+  await button("Create account").click();
+  await page
+    .getByRole("heading", {
+      name: "Assignment & Deadline Tracker",
+      exact: true,
+    })
+    .waitFor();
+  assert.equal(new URL(page.url()).pathname, toolPath("assignment-tracker"));
+  await go("/student/settings", "Student settings");
+  await visible("Changes sync to your account.");
+  assert.equal(
+    await page
+      .getByRole("heading", { name: "Guest Course", exact: true })
+      .count(),
+    0,
+  );
+
   await field("Course name").fill("Physics");
   await field("Course code").fill("PHY101");
   await button("Add course").click();
@@ -233,7 +283,7 @@ try {
   await field("Topics (one per line)").fill("Vectors\nGravity");
   await button("Add exam").click();
   await visible(/remaining · 0\/2 topics/);
-  await field("Vectors").check();
+  await field("Vectors").click();
   await visible(/remaining · 1\/2 topics/);
   await field("Study topic").fill("Gravity review");
   await field("Study date").fill("2027-12-09");
@@ -413,24 +463,7 @@ try {
       .waitFor({ state: "hidden" });
     await page.locator("main").getByRole("button").first().waitFor();
   }
-  const account = await context.request.post(
-    origin + "/api/auth/sign-up/email",
-    {
-      headers: { origin },
-      data: {
-        name: "Browser student",
-        email: "browser-student@example.com",
-        password: "Local-test-password!",
-      },
-    },
-  );
-  assert.equal(account.status(), 200);
   await go("/student/settings", "Student settings");
-  await visible("Changes sync to your account.");
-  assert.equal(
-    await page.getByRole("heading", { name: "Physics", exact: true }).count(),
-    0,
-  );
   await field("Course name").fill("Chemistry");
   await field("Course code").fill("CHEM102");
   await button("Add course").click();
@@ -567,6 +600,34 @@ try {
   );
   console.log(
     "Dashboard resume, presets, both workflows, draft links, student snapshot, and measured file results passed.",
+  );
+  const loginContext = await browser.newContext();
+  try {
+    const loginPage = await loginContext.newPage();
+    await loginPage.goto(origin + "/tools/pdf-to-image");
+    await loginPage.waitForURL(url => url.pathname === "/login");
+    assert.equal(
+      new URL(loginPage.url()).searchParams.get("next"),
+      "/tools/pdf-toolkit?mode=pdf-to-image",
+    );
+    await loginPage
+      .getByLabel("Email address", { exact: true })
+      .fill("browser-student@example.com");
+    await loginPage
+      .getByLabel("Password", { exact: true })
+      .fill("Local-test-password!");
+    await loginPage
+      .getByRole("button", { name: "Sign in", exact: true })
+      .click();
+    await loginPage.waitForURL(origin + "/tools/pdf-toolkit?mode=pdf-to-image");
+    await loginPage
+      .getByRole("heading", { name: "PDF Toolkit", exact: true })
+      .waitFor();
+  } finally {
+    await loginContext.close();
+  }
+  console.log(
+    "Sign-up and email sign-in both returned to the requested locked tool.",
   );
   assert.deepEqual(pageErrors, []);
   console.log(

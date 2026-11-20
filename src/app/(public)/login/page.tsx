@@ -1,14 +1,33 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
+import { toolReturnTarget } from "@/features/auth/tool-return";
 import { AuthPanel } from "@/features/auth/auth-panel";
 import { googleAuthEnabled } from "@/lib/auth";
 import { getSession } from "@/lib/session";
 
-export const metadata: Metadata = { title: "Sign in", robots: { index: false } };
+export const metadata: Metadata = {
+  title: "Sign in",
+  robots: { index: false },
+};
 
-export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string | string[] }> }) {
-  if (await getSession()) redirect("/dashboard");
-  const { error } = await searchParams;
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{
+    error?: string | string[];
+    next?: string | string[];
+  }>;
+}) {
+  const { error, next } = await searchParams;
+  const returnTo = toolReturnTarget(next);
+  if (await getSession()) redirect(returnTo ?? "/dashboard");
 
-  return <AuthPanel mode="login" googleEnabled={googleAuthEnabled()} oauthError={Boolean(error)} />;
+  return (
+    <AuthPanel
+      mode="login"
+      googleEnabled={googleAuthEnabled()}
+      oauthError={Boolean(error)}
+      returnTo={returnTo}
+    />
+  );
 }

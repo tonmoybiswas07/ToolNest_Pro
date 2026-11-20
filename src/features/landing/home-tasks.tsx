@@ -1,3 +1,4 @@
+import { ToolLoginBadge } from "@/features/tools/cards";
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import { categories, findTool, toolHref } from "@/features/tools/registry";
@@ -22,7 +23,10 @@ export function HomeTasks() {
             <li key={slug}>
               <Link href={toolHref(tool)} className="surface interactive-card flex h-full items-center gap-3 p-4">
                 <span className="tile-icon" data-tone={categories[tool.category].tone}><tool.icon size={20} aria-hidden /></span>
-                <span className="flex-1 font-medium">{label}</span>
+                <span className="grid min-w-0 flex-1 justify-items-start gap-1 font-medium">
+                  <span>{label}</span>
+                  <ToolLoginBadge slug={slug} />
+                </span>
                 <ArrowUpRight size={15} className="shrink-0 text-muted-foreground" aria-hidden />
               </Link>
             </li>

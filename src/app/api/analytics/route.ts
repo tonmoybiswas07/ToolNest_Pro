@@ -3,7 +3,7 @@ import { z } from "zod";
 import { sameOrigin } from "@/features/admin/access";
 import { analyticsIndexes, expiry, settings } from "@/features/analytics/store";
 import { preferences } from "@/features/analytics/personal";
-import { categories, legacyToolRoutes, tools } from "@/features/tools/registry";
+import { categories, legacyToolRoutes, signInOnlyTools, tools } from "@/features/tools/registry";
 import { applicationMongo } from "@/lib/mongodb";
 import { getSession } from "@/lib/session";
 
@@ -45,6 +45,7 @@ export async function POST(request: Request) {
     const session = await getSession();
     const userId = session?.user.id;
     if (!userId && event.type !== "search" && event.type !== "opened" && event.type !== "executed" && event.type !== "failed") return new Response(null, { status: 401 });
+    if (!userId && "slug" in event && signInOnlyTools.has(event.slug)) return new Response(null, { status: 401 });
     if (rateLimited(userId ?? "anonymous", userId ? 35 : 180)) return new Response(null, { status: 429 });
 
     const { client, db } = applicationMongo();
