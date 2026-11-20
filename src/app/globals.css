@@ -52,6 +52,8 @@
   --cyan: #376376;
   --indigo: #525c76;
   --student-masthead: #eeead4;
+  --page-contour: rgb(18 89 84 / 17%);
+  --page-glow: rgb(227 195 124 / 28%);
 }
 .dark {
   color-scheme: dark;
@@ -75,6 +77,8 @@
   --cyan: #a8d3e1;
   --indigo: #c2cbe4;
   --student-masthead: #2b3127;
+  --page-contour: rgb(168 223 202 / 17%);
+  --page-glow: rgb(81 148 126 / 22%);
 }
 
 @layer base {
@@ -83,6 +87,13 @@
   }
   body {
     @apply flex min-h-dvh flex-col bg-background font-sans text-foreground antialiased;
+    background-image:
+      linear-gradient(90deg, var(--background) 5%, transparent 76%),
+      linear-gradient(to top, var(--background), transparent 74%),
+      radial-gradient(ellipse at 100% 0%, var(--page-glow), transparent 57%),
+      repeating-radial-gradient(ellipse at 105% -12%, transparent 0 24px, var(--page-contour) 25px 26px, transparent 27px 36px);
+    background-size: 100% 48rem;
+    background-repeat: no-repeat;
   }
   :focus-visible {
     outline: 2px solid var(--highlight);
@@ -161,27 +172,6 @@
   }
   .hero {
     @apply relative isolate overflow-hidden border-b border-border;
-    background:
-      radial-gradient(
-        ellipse at 74% 44%,
-        color-mix(in srgb, var(--primary) 17%, transparent),
-        transparent 63%
-      ),
-      radial-gradient(
-        ellipse at 92% 85%,
-        color-mix(in srgb, var(--blue) 13%, transparent),
-        transparent 49%
-      );
-  }
-  .hero::before {
-    @apply pointer-events-none absolute inset-0 -z-10;
-    content: "";
-    background-image:
-      linear-gradient(var(--border) 1px, transparent 1px),
-      linear-gradient(90deg, var(--border) 1px, transparent 1px);
-    background-size: 42px 42px;
-    mask-image: radial-gradient(ellipse at 77% 55%, #000 0%, transparent 72%);
-    opacity: 0.54;
   }
   .hero-grid {
     @apply grid items-center gap-7 pt-15 pb-8 sm:gap-10 sm:py-20 lg:min-h-[35rem] lg:grid-cols-[1.08fr_0.92fr] lg:py-22;
@@ -202,7 +192,7 @@
     box-shadow: 0 18px 50px color-mix(in srgb, var(--primary) 12%, transparent);
   }
   .auth-stage {
-    background: linear-gradient(145deg, var(--accent), var(--background) 65%);
+    background: linear-gradient(145deg, color-mix(in srgb, var(--accent) 45%, transparent), transparent 65%);
   }
   .auth-workspace {
     color: #f5f4e6;
@@ -373,24 +363,53 @@ body:has(> .skip-link:focus-visible) .site-entry-loader {
   color: var(--student-icon-ink);
   background: var(--student-tint);
 }
-.tool-catalog-card, .tool-catalog-icon, .student-collection-icon {
+.folder-card, .tool-catalog-icon, .student-collection-icon {
   --collection-ink: var(--highlight);
 }
-[data-tone="study"].tool-catalog-card,
+[data-tone="study"].folder-card,
 [data-tone="study"].tool-catalog-icon,
 [data-tone="study"].student-collection-icon { --collection-ink: var(--amber); }
-[data-tone="sources"].tool-catalog-card,
+[data-tone="sources"].folder-card,
 [data-tone="sources"].tool-catalog-icon,
 [data-tone="sources"].student-collection-icon { --collection-ink: var(--blue); }
 
-.tool-catalog-card {
-  border: 1px solid var(--border);
-  border-top: 3px solid color-mix(in srgb, var(--collection-ink) 65%, var(--border));
+.folder-card {
+  --folder-edge: color-mix(in srgb, var(--collection-ink) 35%, var(--border));
+  --folder-tab: color-mix(in srgb, var(--collection-ink) 19%, var(--card));
+  position: relative;
+  isolation: isolate;
+  padding-top: 1.125rem;
   border-radius: .75rem;
-  background: var(--card);
 }
-.tool-catalog-card:hover, .tool-catalog-card:focus-visible {
-  background: color-mix(in srgb, var(--collection-ink) 7%, var(--card));
+.folder-card::before, .folder-card::after {
+  position: absolute;
+  z-index: -1;
+  border: 1px solid var(--folder-edge);
+  pointer-events: none;
+  content: "";
+}
+.folder-card::before {
+  inset: 0 auto auto 0;
+  width: 42%;
+  height: 1.5rem;
+  border-radius: .75rem 1rem 0 0;
+  background: var(--folder-tab);
+}
+.folder-card::after {
+  inset: .55rem .65rem auto .9rem;
+  height: 1rem;
+  border-radius: .5rem .5rem 0 0;
+  background: color-mix(in srgb, var(--collection-ink) 10%, var(--card));
+}
+.folder-card-face {
+  border: 1px solid var(--folder-edge);
+  border-radius: 0 .75rem .75rem .75rem;
+  background: linear-gradient(170deg, color-mix(in srgb, var(--collection-ink) 5%, var(--card)), var(--card) 58%);
+}
+.folder-card:hover .folder-card-face,
+.folder-card:focus-visible .folder-card-face {
+  border-color: var(--collection-ink);
+  background: linear-gradient(170deg, color-mix(in srgb, var(--collection-ink) 10%, var(--card)), var(--card) 76%);
 }
 .tool-catalog-icon, .student-collection-icon {
   display: inline-grid;
@@ -446,4 +465,8 @@ body:has(> .skip-link:focus-visible) .site-entry-loader {
     background: white !important;
   }
   .student-print :is(li, section) { break-inside: avoid; }
+}
+
+@media print {
+  body { background-image: none; }
 }

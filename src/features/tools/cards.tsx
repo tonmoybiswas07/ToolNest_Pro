@@ -1,6 +1,8 @@
 import { collections } from "@/features/student/collections";
 import { toolHref } from "@/features/tools/registry";
 import Link from "next/link";
+import type { ReactNode } from "react";
+import { cn } from "@/lib/utils";
 import { ArrowUpRight, LockKeyhole } from "lucide-react";
 import {
   categories,
@@ -20,6 +22,33 @@ export function ToolLoginBadge({ slug }: { slug: string }) {
   );
 }
 
+export function FolderCard({
+  href,
+  tone,
+  className,
+  children,
+}: {
+  href: string;
+  tone?: string;
+  className?: string;
+  children: ReactNode;
+}) {
+  return (
+    <Link
+      href={href}
+      data-tone={tone}
+      className={cn(
+        "folder-card group flex h-full min-w-0 flex-col",
+        className,
+      )}
+    >
+      <div className="folder-card-face flex min-w-0 flex-1 flex-col p-4 sm:p-5">
+        {children}
+      </div>
+    </Link>
+  );
+}
+
 export function ToolCard({ tool }: { tool: Tool }) {
   const Icon = tool.icon;
   const tone =
@@ -28,11 +57,7 @@ export function ToolCard({ tool }: { tool: Tool }) {
       : undefined;
 
   return (
-    <Link
-      href={toolHref(tool)}
-      className="tool-catalog-card group flex h-full min-w-0 flex-col p-4 sm:p-5"
-      data-tone={tone}
-    >
+    <FolderCard href={toolHref(tool)} tone={tone} className="tool-catalog-card">
       <span className="mb-4 flex items-center justify-between gap-3">
         <span className="tool-catalog-icon" data-tone={tone}>
           <Icon size={20} aria-hidden />
@@ -53,7 +78,7 @@ export function ToolCard({ tool }: { tool: Tool }) {
           <span className="status-pill">{tool.status}</span>
         )}
       </span>
-    </Link>
+    </FolderCard>
   );
 }
 
@@ -62,20 +87,24 @@ export function CategoryCard({ category }: { category: CategoryId }) {
   const count = tools.filter((tool) => tool.category === category).length;
 
   return (
-    <Link
-      href={`/tools?category=${category}`}
-      className="surface interactive-card flex h-full items-start gap-4 p-4 sm:p-5"
-    >
-      <span className="tile-icon" data-tone={tone}>
-        <Icon size={20} aria-hidden />
-      </span>
-      <div className="min-w-0 flex-1">
-        <h3 className="font-semibold">{name}</h3>
-        <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-          {description}
-        </p>
-        <p className="mt-2 text-sm font-medium text-highlight">{count} tools</p>
+    <FolderCard href={`/tools?category=${category}`}>
+      <div className="flex items-start gap-3">
+        <span className="tile-icon" data-tone={tone}>
+          <Icon size={20} aria-hidden />
+        </span>
+        <div className="min-w-0 flex-1">
+          <h3 className="font-semibold">{name}</h3>
+          <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+          <p className="mt-2 text-sm font-medium text-highlight">
+            {count} tools
+          </p>
+        </div>
+        <ArrowUpRight
+          size={16}
+          className="shrink-0 text-muted-foreground group-hover:text-highlight"
+          aria-hidden
+        />
       </div>
-    </Link>
+    </FolderCard>
   );
 }

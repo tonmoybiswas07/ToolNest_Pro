@@ -1,5 +1,4 @@
-import { ToolLoginBadge } from "@/features/tools/cards";
-import Link from "next/link";
+import { FolderCard, ToolLoginBadge } from "@/features/tools/cards";
 import { ArrowUpRight } from "lucide-react";
 import { categories, findTool, toolHref } from "@/features/tools/registry";
 
@@ -13,7 +12,9 @@ const tasks = [
 export function HomeTasks() {
   return (
     <section className="shell pt-12 sm:pt-16" aria-labelledby="task-heading">
-      <h2 id="task-heading" className="section-title mb-5">Start with a task</h2>
+      <h2 id="task-heading" className="section-title mb-5">
+        Start with a task
+      </h2>
       <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {tasks.map(([slug, label]) => {
           const tool = findTool(slug);
@@ -21,14 +22,25 @@ export function HomeTasks() {
 
           return (
             <li key={slug}>
-              <Link href={toolHref(tool)} className="surface interactive-card flex h-full items-center gap-3 p-4">
-                <span className="tile-icon" data-tone={categories[tool.category].tone}><tool.icon size={20} aria-hidden /></span>
-                <span className="grid min-w-0 flex-1 justify-items-start gap-1 font-medium">
-                  <span>{label}</span>
-                  <ToolLoginBadge slug={slug} />
-                </span>
-                <ArrowUpRight size={15} className="shrink-0 text-muted-foreground" aria-hidden />
-              </Link>
+              <FolderCard href={toolHref(tool)}>
+                <div className="flex flex-1 items-center gap-3">
+                  <span
+                    className="tile-icon"
+                    data-tone={categories[tool.category].tone}
+                  >
+                    <tool.icon size={20} aria-hidden />
+                  </span>
+                  <span className="grid min-w-0 flex-1 justify-items-start gap-1 font-medium">
+                    <span>{label}</span>
+                    <ToolLoginBadge slug={slug} />
+                  </span>
+                  <ArrowUpRight
+                    size={15}
+                    className="shrink-0 text-muted-foreground"
+                    aria-hidden
+                  />
+                </div>
+              </FolderCard>
             </li>
           );
         })}
