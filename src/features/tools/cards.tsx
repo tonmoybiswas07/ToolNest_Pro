@@ -1,6 +1,7 @@
+import { collections } from "@/features/student/collections";
 import { toolHref } from "@/features/tools/registry";
 import Link from "next/link";
-import { ChevronRight, LockKeyhole } from "lucide-react";
+import { ArrowUpRight, LockKeyhole } from "lucide-react";
 import {
   categories,
   signInOnlyTools,
@@ -21,30 +22,37 @@ export function ToolLoginBadge({ slug }: { slug: string }) {
 
 export function ToolCard({ tool }: { tool: Tool }) {
   const Icon = tool.icon;
+  const tone =
+    tool.category === "student"
+      ? collections.find((group) => group.slugs.includes(tool.slug))?.tone
+      : undefined;
 
   return (
     <Link
       href={toolHref(tool)}
-      className="surface interactive-card flex h-full flex-col p-5 sm:p-6"
+      className="tool-catalog-card group flex h-full min-w-0 flex-col p-4 sm:p-5"
+      data-tone={tone}
     >
-      <div className="flex items-center justify-between gap-2">
-        <span className="tile-icon" data-tone={categories[tool.category].tone}>
-          <Icon size={21} aria-hidden />
+      <span className="mb-4 flex items-center justify-between gap-3">
+        <span className="tool-catalog-icon" data-tone={tone}>
+          <Icon size={20} aria-hidden />
         </span>
-        {signInOnlyTools.has(tool.slug) ? (
-          <ToolLoginBadge slug={tool.slug} />
-        ) : (
-          <span className="status-pill">{tool.status}</span>
-        )}
-      </div>
-      <h3 className="mt-5 text-lg font-semibold tracking-tight">{tool.name}</h3>
+        <ArrowUpRight
+          size={17}
+          className="shrink-0 text-muted-foreground group-hover:text-highlight"
+          aria-hidden
+        />
+      </span>
+      <h3 className="font-semibold leading-snug">{tool.name}</h3>
       <p className="mt-1.5 flex-1 text-sm leading-relaxed text-muted-foreground">
         {tool.description}
       </p>
-      <div className="mt-5 flex items-center justify-between border-t border-border pt-4 text-sm text-muted-foreground">
-        {categories[tool.category].name}
-        <ChevronRight size={15} aria-hidden />
-      </div>
+      <span className="mt-3 block empty:hidden">
+        <ToolLoginBadge slug={tool.slug} />
+        {tool.status === "Requires Setup" && (
+          <span className="status-pill">{tool.status}</span>
+        )}
+      </span>
     </Link>
   );
 }

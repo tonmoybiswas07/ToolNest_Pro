@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { LayoutGrid, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { CatalogPreview } from "@/features/landing/catalog-preview";
+import { HeroClock } from "@/features/landing/hero-clock";
 import { RecentHomeTools } from "@/features/landing/recent-home-tools";
 import { HomeTasks } from "@/features/landing/home-tasks";
 import { CategoryCard, ToolCard } from "@/features/tools/cards";
@@ -21,7 +21,7 @@ export default function Home() {
               <Button variant="outline" size="lg" asChild><Link href="#categories">View categories</Link></Button>
             </div>
           </div>
-          <CatalogPreview />
+          <HeroClock toolCount={tools.length} categoryCount={categoryIds.length} />
         </div>
       </section>
       <HomeTasks />

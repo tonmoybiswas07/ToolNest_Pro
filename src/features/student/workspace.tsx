@@ -175,7 +175,7 @@ export function Panel({
 }) {
   return (
     <section className={`student-widget min-w-0 p-5 sm:p-6 ${className}`}>
-      <h2 className="mb-4 text-lg font-semibold">{title}</h2>
+      <h2 className="mb-4 border-b border-border pb-3 text-lg font-semibold">{title}</h2>
       {children}
     </section>
   );

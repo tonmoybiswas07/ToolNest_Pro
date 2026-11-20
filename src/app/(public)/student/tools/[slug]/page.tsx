@@ -1,3 +1,6 @@
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
+import { collections } from "@/features/student/collections";
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { ToolControls } from "@/features/analytics/tool-controls";
@@ -39,15 +42,29 @@ export default async function Page({ params, searchParams }: Props) {
   );
   return (
     <>
-      <header className="student-masthead mb-6 flex flex-wrap items-start justify-between gap-4 p-5 sm:p-8">
-        <div>
-          <span className="student-tool-icon mb-3">
-            <tool.icon size={22} aria-hidden />
-          </span>
-          <h1 className="student-display text-3xl sm:text-4xl">{tool.name}</h1>
-          <p className="mt-2 text-muted-foreground">{tool.description}</p>
+      <header className="student-masthead mb-6 p-5 sm:p-8">
+        <Link
+          href={`/student/tools#collection-${collections.findIndex((group) => group.slugs.includes(tool.slug))}`}
+          className="student-text-link inline-flex items-center gap-2 text-sm"
+        >
+          <ArrowLeft size={16} aria-hidden /> Student tools
+        </Link>
+        <div className="mt-5 flex flex-wrap items-end justify-between gap-4">
+          <div className="flex min-w-0 items-start gap-3 sm:gap-4">
+            <span className="student-tool-icon mt-1">
+              <tool.icon size={22} aria-hidden />
+            </span>
+            <div>
+              <h1 className="student-display text-3xl sm:text-4xl">
+                {tool.name}
+              </h1>
+              <p className="mt-2 max-w-prose text-sm text-muted-foreground sm:text-base">
+                {tool.description}
+              </p>
+            </div>
+          </div>
+          <ToolControls slug={tool.slug} />
         </div>
-        <ToolControls slug={tool.slug} />
       </header>
       <StudentWorkspace key={tool.slug} snapshot={snapshot} slug={tool.slug}>
         <StudentTool
