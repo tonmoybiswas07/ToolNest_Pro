@@ -1,3 +1,4 @@
+import { toolHref } from "@/features/tools/registry";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { categories, tools, type CategoryId, type Tool } from "./registry";
@@ -7,7 +8,7 @@ export function ToolCard({ tool }: { tool: Tool }) {
 
   return (
     <Link
-      href={`/tools/${tool.slug}`}
+      href={toolHref(tool)}
       className="surface interactive-card flex h-full flex-col p-5 sm:p-6"
     >
       <div className="flex items-center justify-between gap-2">

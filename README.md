@@ -1,6 +1,6 @@
 # ToolNest Pro
 
-ToolNest Pro is a Next.js catalog for 33 tools. Phase 2 adds accounts and sessions. Phase 3 adds the role-protected admin dashboard and activity reporting.
+ToolNest Pro is a Next.js catalog for 40 tools. Phase 2 adds accounts and sessions. Phase 3 adds the role-protected admin dashboard and activity reporting. Student Hub adds academic planning, study, and research workspaces.
 
 ## Run locally
 
@@ -118,3 +118,19 @@ Phase 6A adds URL encoding, text statistics, case conversion, color conversion, 
 - Timestamp Converter rejects skipped local times and requires a choice when a time repeats. It loads the Temporal polyfill only for date input and only when native Temporal is unavailable. Unix seconds accept milliseconds as fractional seconds.
 - Hash Generator reads local files up to 16 MB. Hashing and UUID generation require a secure browsing context such as HTTPS or localhost. Passwords stay in memory until reset or navigation, and copying always requires an explicit click.
 - Run utility engine tests with `node --experimental-strip-types --test tests/utilities.test.mjs`.
+
+## Student Hub
+
+Open `/student` to browse ten academic tools and `/student/settings` to create shared courses, set the time zone, and choose attendance and study targets. Guests use a browser-local workspace. Signed-in users have a separate synced workspace. The two workspaces are independent.
+
+Student Hub uses `student_profiles`, `student_courses`, `student_assignments`, `student_class_schedules`, `student_attendance`, `student_grades`, `student_flashcards`, `student_study_sessions`, `student_exam_plans`, and `student_notes`. Each collection stores one document per account, keyed by the Better Auth user ID. The built-in unique `_id` indexes support owner-scoped reads and writes. A revision check and MongoDB snapshot transactions keep shared records consistent across devices. Use a replica set or Atlas deployment that supports transactions. The workspace payload limit is 500 KB. The optional AI endpoint creates `student_summary_limits` with MongoDB's unique `_id` index and a TTL index named `student_summary_expiry` on `expiresAt`. The existing analytics and favorites collections continue using the same tool identifiers, including retired identifiers in historical reports.
+
+PDF text extraction and English/Bengali image OCR run in the browser. Scanned PDF pages need OCR. The optional AI summarizer uses the OpenAI Responses API after explicit consent. To enable it, set `STUDENT_OPENAI_API_KEY` and `STUDENT_OPENAI_MODEL` on the server. Each signed-in account can make five requests per UTC day, with at most 18,000 source characters and 1,800 output tokens per request. Review summaries against their source.
+
+Routine and grade reports use the browser's Print / Save PDF dialog. Flashcard decks round-trip through ToolNest JSON, including review dates. Known cards return after 1, 2, 4, 8 days and so on, capped at 64 days. Unknown cards return the next day and reset the streak.
+
+### Regression checks
+
+Run `npm run lint`, `npm run typecheck`, `node --test tests/*.test.mjs`, and `npm run build`. The MongoDB and browser checks require a local MongoDB replica set at `mongodb://127.0.0.1:37129/?replicaSet=toolnest-qa`, or a loopback replica set specified via `TOOLNEST_TEST_MONGO`. Both checks create and drop their own randomly named local test databases.
+
+Run `node tests/admin.integration.mjs` for Better Auth, user isolation, and analytics. Run `npx playwright install chromium` then `node tests/student.browser.mjs` for Chromium workflows and axe checks. Set `TOOLNEST_TEST_BROWSER` to use an installed Chromium or Chrome binary.

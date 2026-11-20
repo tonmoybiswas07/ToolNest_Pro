@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
 import { execFile, spawn } from "node:child_process";
-import { randomBytes, randomUUID } from "node:crypto";
+import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { promisify } from "node:util";
 import { MongoClient, ObjectId } from "mongodb";
+import { emptyStudent } from "../src/features/student/model.ts";
 
 const address = new URL(
   process.env.TOOLNEST_TEST_MONGO ??
@@ -23,6 +24,8 @@ const env = {
   BETTER_AUTH_SECRET: randomBytes(48).toString("base64"),
   GOOGLE_CLIENT_ID: "phase3-dummy.apps.googleusercontent.com",
   GOOGLE_CLIENT_SECRET: "test-only",
+  STUDENT_OPENAI_API_KEY: "",
+  STUDENT_OPENAI_MODEL: "",
 };
 const mongo = new MongoClient(uri, { serverSelectionTimeoutMS: 5000 });
 const db = mongo.db();
@@ -493,6 +496,80 @@ async function verify() {
     "/login",
   );
 
+  const dashboard = "/student/dashboard";
+  const secondStudent = { cookie: cookieFrom(await signIn(password)) };
+  assert.ok(secondStudent.cookie);
+  async function binding(account) {
+    const sessionData = await (await request("/api/auth/get-session", account)).json();
+    return createHash("sha256").update("student-workspace:" + sessionData.session.id).digest("hex");
+  }
+  const ownerBinding = await binding(owner);
+  const memberBinding = await binding(secondStudent);
+  const coursework = { id: randomUUID(), name: "Astronomy", code: "AST101", color: "#1144aa" };
+  const assignment = {
+    id: randomUUID(), course: coursework.id, title: "Private stellar worksheet",
+    description: "Student test data", due: "2027-01-01T16:00:00Z",
+    priority: "High", type: "Worksheet", status: "To do", progress: 0,
+  };
+  const studentData = { ...emptyStudent, courses: [coursework], assignments: [assignment] };
+  function writeStudent(account, token, revision, data, requestOrigin = origin) {
+    return fetch(origin + "/api/student", {
+      method: "PUT",
+      headers: {
+        ...(account?.cookie && { cookie: account.cookie }),
+        origin: requestOrigin, "content-type": "application/json",
+        "x-student-workspace": token,
+      },
+      body: JSON.stringify({ revision, data }),
+    });
+  }
+
+  assert.equal((await writeStudent(null, ownerBinding, 0, studentData)).status, 401);
+  assert.equal((await writeStudent(owner, ownerBinding, 0, studentData, "https://invalid.example")).status, 403);
+  assert.equal((await writeStudent(secondStudent, ownerBinding, 0, studentData)).status, 409);
+  assert.equal((await writeStudent(owner, ownerBinding, 0, { ...studentData, assignments: [{ ...assignment, course: randomUUID() }] })).status, 422);
+  assert.equal((await writeStudent(owner, ownerBinding, 0, studentData)).status, 200);
+  assert.equal((await writeStudent(owner, ownerBinding, 0, studentData)).status, 409);
+  assert.equal((await writeStudent(secondStudent, memberBinding, 0, emptyStudent)).status, 200);
+  const assignments = db.collection("student_assignments");
+  assert.equal((await assignments.findOne({ _id: owner.id })).records.assignments[0].title, assignment.title);
+  assert.equal(await assignments.findOne({ _id: member.id }), null);
+  assert.equal((await db.collection("student_profiles").findOne({ _id: member.id })).revision, 1);
+  assert.match(await (await request(dashboard, owner)).text(), /Private stellar worksheet/);
+  assert.doesNotMatch(await (await request(dashboard, secondStudent)).text(), /Private stellar worksheet/);
+  assert.doesNotMatch(await (await request(dashboard)).text(), /Private stellar worksheet/);
+  await new Promise(resolve => setTimeout(resolve, 450));
+  const writes = await Promise.all([
+    writeStudent(owner, ownerBinding, 1, { ...studentData, assignments: [] }),
+    writeStudent(owner, ownerBinding, 1, { ...studentData, assignments: [{ ...assignment, title: "Edited worksheet" }] }),
+  ]);
+  assert.deepEqual(writes.map(result => result.status).sort(), [200, 409]);
+
+  const studentAnalytics = payload => request("/api/analytics", { ...secondStudent, body: payload });
+  const studentEvent = { type: "executed", id: randomUUID(), slug: "assignment-tracker" };
+  const studentEvents = db.collection("tool_usage_events");
+  for (const type of ["opened", "executed", "failed"]) {
+    const event = { ...studentEvent, id: randomUUID(), type };
+    assert.equal((await studentAnalytics(event)).status, 204);
+    assert.equal((await studentAnalytics(event)).status, 204);
+  }
+  assert.equal(
+    await studentEvents.countDocuments({ slug: studentEvent.slug, userId: member.id, type: { $in: ["opened", "executed", "failed"] } }),
+    3,
+  );
+  assert.equal((await studentAnalytics({ ...studentEvent, notes: assignment.description })).status, 400);
+  assert.equal((await studentAnalytics({ type: "favorite", slug: studentEvent.slug, enabled: true })).status, 204);
+  assert.match(await (await request(dashboard, secondStudent)).text(), /Assignment &amp; Deadline Tracker/);
+  const retired = "instagram-video-downloader";
+  await studentEvents.insertOne({ slug: retired, type: "executed", at: new Date(), expiresAt: new Date(Date.now() + 86400000), userId: member.id });
+  await db.collection("admin_settings").updateOne({ _id: `user:${member.id}` }, { $addToSet: { favorites: retired } }, { upsert: true });
+  assert.equal((await request(`/tools/${retired}`)).headers.get("location"), "/tools");
+  assert.equal((await request("/tools/assignment-tracker")).headers.get("location"), "/student/tools/assignment-tracker");
+  assert.match(await (await request("/admin/tools", owner)).text(), /Instagram Video Downloader/);
+  assert.doesNotMatch(await (await request("/dashboard", secondStudent)).text(), /Instagram Video Downloader/);
+  assert.equal(await studentEvents.countDocuments({ slug: retired }), 1);
+  assert.equal((await request("/api/student/summary", { ...owner, body: { consent: true, mode: "concise", text: "A valid length of source notes" } })).status, 503);
+
   const google = await request("/api/auth/sign-in/social", {
     body: {
       provider: "google",
@@ -526,7 +603,7 @@ async function verify() {
     1,
   );
 
-  console.log("Phase 3 integration checks passed.");
+  console.log("Admin, authentication, analytics, and Student Hub integration checks passed.");
 }
 
 try {

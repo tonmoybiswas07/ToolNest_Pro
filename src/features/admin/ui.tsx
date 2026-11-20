@@ -132,7 +132,7 @@ export function AnalyticsChart({
                 />
                 {secondary && (
                   <div
-                    className="flex-1 rounded-t-sm bg-blue-500"
+                    className="flex-1 rounded-t-sm bg-[var(--blue)]"
                     style={{
                       height: `${(100 * secondary[index].value) / max}%`,
                     }}
@@ -146,9 +146,10 @@ export function AnalyticsChart({
             <span>{data.at(-1)?.label}</span>
           </div>
           {secondary && (
-            <p className="mt-3 text-sm text-muted-foreground">
-              Violet: successful · Blue: failed
-            </p>
+            <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
+              <li className="flex items-center gap-2"><span aria-hidden className="size-2.5 rounded-sm bg-primary" />Successful</li>
+              <li className="flex items-center gap-2"><span aria-hidden className="size-2.5 rounded-sm bg-[var(--blue)]" />Failed</li>
+            </ul>
           )}
           <details className="mt-3 text-sm">
             <summary className="w-fit cursor-pointer text-highlight">

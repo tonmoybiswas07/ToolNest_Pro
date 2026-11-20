@@ -12,7 +12,7 @@ const keyword = z.string().max(100).refine(value => tools.some(tool => tool.slug
 const schema = z.discriminatedUnion("type", [
   z.strictObject({ type: z.literal("search"), id: z.uuid(), keyword: keyword.optional(), zero: z.boolean() }),
   z.strictObject({ type: z.literal("opened"), id: z.uuid(), slug, searchId: z.uuid().optional() }),
-  z.strictObject({ type: z.enum(["executed", "failed"]), id: z.uuid(), slug: slug.refine(value => tools.some(tool => tool.slug === value && tool.status === "Available")) }),
+  z.strictObject({ type: z.enum(["executed", "failed"]), id: z.uuid(), slug: slug.refine(value => tools.some(tool => tool.slug === value && (tool.status === "Available" || tool.slug === "ai-notes-summarizer"))) }),
   z.strictObject({ type: z.literal("favorite"), slug, enabled: z.boolean() }),
   z.strictObject({ type: z.literal("consent"), enabled: z.boolean() }),
   z.strictObject({ type: z.literal("delete_history") }),

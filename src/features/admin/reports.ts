@@ -3,7 +3,7 @@ import "server-only";
 import type { Document } from "mongodb";
 import { applicationMongo } from "@/lib/mongodb";
 import { analyticsIndexes } from "@/features/analytics/store";
-import { categories, findTool, legacyToolRoutes, tools, type CategoryId } from "@/features/tools/registry";
+import { categories, findTool, legacyToolRoutes, retiredTools, tools, type CategoryId } from "@/features/tools/registry";
 
 const day = 86400000;
 export const dateRanges = [7, 30, 90] as const;
@@ -101,11 +101,12 @@ export async function reports(days: number) {
   const usageTrend = lookup(usage?.trend, "count");
   const series = (values: Map<unknown, number>) => calendar.map(label => ({ label, value: values.get(label) ?? 0 }));
   const sum = (values: Map<unknown, number>) => [...values.values()].reduce((acc, value) => acc + value, 0);
-  const toolRows = tools.map(tool => ({
-    slug: tool.slug, name: tool.name, category: categories[tool.category].name,
+  const reportingTools = [...tools.map(tool => ({ ...tool, category: categories[tool.category].name })), ...retiredTools];
+  const toolRows = reportingTools.map(tool => ({
+    slug: tool.slug, name: tool.name, category: tool.category,
     executions: executions.get(tool.slug) ?? 0, errors: errors.get(tool.slug) ?? 0, unique: distinct.get(tool.slug) ?? 0,
   })).sort((a, b) => b.executions - a.executions || a.name.localeCompare(b.name));
-  const categoryRows = Object.values(categories).map(category => ({
+  const categoryRows = [...Object.values(categories), { name: "Social Media" }].map(category => ({
     label: category.name, value: toolRows.filter(row => row.category === category.name).reduce((count, row) => count + row.executions, 0),
   }));
 
@@ -114,7 +115,7 @@ export async function reports(days: number) {
     growth: series(registrations), successful: series(successful), failures: series(failures), active: series(active),
     searches: series(searchCount), zero: sum(zeroCount), converted: sum(conversions),
     terms: (search?.terms as Document[] | undefined ?? []).map(row => ({
-      label: findTool(String(row._id))?.name ?? (Object.hasOwn(categories, row._id) ? categories[row._id as CategoryId].name : "Unknown"),
+      label: findTool(String(row._id))?.name ?? retiredTools.find(tool => tool.slug === row._id)?.name ?? (row._id === "social" ? "Social Media" : undefined) ?? (Object.hasOwn(categories, row._id) ? categories[row._id as CategoryId].name : "Unknown"),
       value: Number(row.count),
     })),
     toolRows, categoryRows, usageTrend: series(usageTrend), unique: Number(usage?.overallUsers[0]?.count ?? 0),

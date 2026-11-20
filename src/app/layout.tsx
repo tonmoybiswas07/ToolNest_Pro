@@ -10,7 +10,7 @@ export const metadata: Metadata = {
     template: "%s | ToolNest Pro",
   },
   description:
-    "Explore the ToolNest Pro catalog of 33 tools for images, documents, code, text, design, everyday utilities, and social video.",
+    "Explore the ToolNest Pro tools for images, documents, code, text, design, everyday utilities, and student productivity.",
   openGraph: {
     title: "ToolNest Pro",
     description:

@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 const links = [
   { href: "/", label: "Home" },
   { href: "/tools", label: "Explore tools" },
+  { href: "/student", label: "Student Hub" },
 ];
 
 export function Navbar() {
@@ -26,7 +27,7 @@ export function Navbar() {
   function navigationLinks() {
     return links.map(({ href, label }) => {
       const active =
-        href === "/" ? pathname === href : pathname.startsWith("/tools");
+        href === "/" ? pathname === href : pathname === href || pathname.startsWith(href + "/");
       return (
         <Link
           key={href}

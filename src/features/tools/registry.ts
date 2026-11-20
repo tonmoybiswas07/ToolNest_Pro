@@ -1,8 +1,8 @@
 import {
   Braces, Calculator, CaseSensitive, Clock, CodeXml, Crop,
-  FileImage, Files, FileText, Fingerprint, Hash, Image, Instagram,
-  Link, Layers3, LockKeyhole, Music2, NotebookPen, Palette, Percent, QrCode, Regex,
-  Ruler, ScanLine, Scissors, ShieldCheck, Share2, Shrink, Sparkles, Stamp, Type, Video,
+  FileImage, Files, FileText, Fingerprint, Hash, Image, GraduationCap, CalendarDays, CalendarCheck, BookOpen, Timer,
+  Link, Layers3, LockKeyhole, NotebookPen, Palette, Percent, QrCode, Regex,
+  Ruler, ScanLine, Scissors, ShieldCheck, Shrink, Sparkles, Stamp, Type,
   type LucideIcon,
 } from "lucide-react";
 
@@ -13,7 +13,7 @@ export const categories = {
   text: { name: "Text", description: "Count, clean, and compare your writing.", icon: Type, tone: "pink" },
   design: { name: "Design", description: "Explore colors and create visual assets.", icon: Palette, tone: "amber" },
   utility: { name: "Utilities", description: "Handle everyday calculations and conversions.", icon: Calculator, tone: "cyan" },
-  social: { name: "Social Media", description: "Explore planned video download utilities.", icon: Share2, tone: "indigo" },
+  student: { name: "Student Hub", description: "Plan classes, study sessions, and academic work.", icon: GraduationCap, tone: "indigo" },
 } as const;
 
 export type CategoryId = keyof typeof categories;
@@ -60,12 +60,19 @@ const definitions: ToolDefinition[] = [
   { slug: "unit-converter", name: "Unit Converter", category: "utility", description: "Convert units of length, weight, temperature, and more.", icon: Ruler, available: true },
   { slug: "percentage-calculator", name: "Percentage Calculator", category: "utility", description: "Work out proportions and percentage changes.", icon: Percent, available: true },
   { slug: "timestamp-converter", name: "Timestamp Converter", category: "utility", description: "Convert Unix timestamps to readable dates and back.", icon: Clock, available: true },
-  { slug: "instagram-video-downloader", name: "Instagram Video Downloader", category: "social", description: "A planned downloader for Instagram video links.", icon: Instagram },
-  { slug: "tiktok-video-downloader", name: "TikTok Video Downloader", category: "social", description: "A planned downloader for TikTok video links.", icon: Music2 },
-  { slug: "threads-video-downloader", name: "Threads Video Downloader", category: "social", description: "A planned downloader for Threads video links.", icon: Video },
+  { slug: "assignment-tracker", name: "Assignment & Deadline Tracker", category: "student", description: "Organize deadlines and track assignment progress.", icon: CalendarCheck, available: true },
+  { slug: "class-routine-maker", name: "Smart Class Routine Maker", category: "student", description: "Build a weekly timetable and catch overlapping classes.", icon: CalendarDays, available: true },
+  { slug: "attendance-tracker", name: "Smart Attendance Tracker", category: "student", description: "Log classes and plan around your attendance target.", icon: Percent, available: true },
+  { slug: "cgpa-calculator", name: "CGPA & GPA Calculator", category: "student", description: "Calculate weighted grades and explore target outcomes.", icon: GraduationCap, available: true },
+  { slug: "ai-notes-summarizer", name: "AI PDF & Notes Summarizer", category: "student", description: "Extract PDF text and generate study summaries when AI is configured.", icon: Sparkles },
+  { slug: "citation-generator", name: "Citation & Reference Generator", category: "student", description: "Build citations and bibliographies from source metadata.", icon: BookOpen, available: true },
+  { slug: "pomodoro-timer", name: "Pomodoro Study Timer", category: "student", description: "Time focus blocks, take breaks, and review study activity.", icon: Timer, available: true },
+  { slug: "flashcard-maker", name: "Flashcard Maker", category: "student", description: "Create flashcards and review study decks with spaced repetition.", icon: Layers3, available: true },
+  { slug: "exam-study-planner", name: "Exam Countdown & Study Planner", category: "student", description: "Plan study blocks, topics, and upcoming exams.", icon: CalendarDays, available: true },
+  { slug: "ocr-image-to-text", name: "OCR Image to Text", category: "student", description: "Recognize printed text from images on your device.", icon: ScanLine, available: true },
 ];
 
-export const tools = definitions.map(({ available, ...tool }) => ({ ...tool, status: available ? "Available" as const : "Coming Soon" as const }));
+export const tools = definitions.map(({ available, ...tool }) => ({ ...tool, status: available ? "Available" as const : "Requires Setup" as const }));
 export type Tool = (typeof tools)[number];
 
 export const legacyToolRoutes = new Map<string, { slug: string; mode?: string }>();
@@ -82,7 +89,15 @@ export const findTool = (slug: string) => tools.find(tool => tool.slug === canon
 
 const featuredSlugs = new Set([
   "image-compressor", "pdf-merger", "json-studio", "word-counter",
-  "qr-code-studio", "instagram-video-downloader",
+  "qr-code-studio", "assignment-tracker",
 ]);
 
 export const featuredTools = tools.filter((tool) => featuredSlugs.has(tool.slug));
+
+export const retiredTools = [
+  { slug: "instagram-video-downloader", name: "Instagram Video Downloader", category: "Social Media" },
+  { slug: "tiktok-video-downloader", name: "TikTok Video Downloader", category: "Social Media" },
+  { slug: "threads-video-downloader", name: "Threads Video Downloader", category: "Social Media" },
+];
+export const toolHref = (tool: Tool) => tool.category === "student" ? `/student/tools/${tool.slug}` : `/tools/${tool.slug}`;
+export const studentTools = tools.filter(tool => tool.category === "student");

@@ -2,7 +2,7 @@
 
 import { Heart } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { authClient } from "@/lib/auth-client";
@@ -13,9 +13,11 @@ export function ToolControls({ slug, previousSlug }: { slug: string; previousSlu
   const [favorite, setFavorite] = useState(false);
   const [pending, setPending] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const opened = useRef<string | null>(null);
 
   useEffect(() => {
-    if (typeof crypto.randomUUID !== "function") return;
+    if (opened.current === slug || typeof crypto.randomUUID !== "function") return;
+    opened.current = slug;
     const id = crypto.randomUUID();
     let attribution: string | null = null;
     try {

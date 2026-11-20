@@ -10,21 +10,21 @@ import {
 import { pageRange } from "../src/features/tools/file-processing/pdf-ranges.ts";
 import {
   tools,
+  retiredTools,
+  studentTools,
   legacyToolRoutes,
   canonicalToolSlug,
 } from "../src/features/tools/registry.ts";
 
-test("Registry has 33 distinct tools, 30 active and three planned", () => {
-  assert.equal(tools.length, 33);
-  assert.equal(new Set(tools.map((tool) => tool.slug)).size, 33);
-  assert.equal(tools.filter((tool) => tool.status === "Available").length, 30);
-  assert.equal(
-    tools.filter((tool) => tool.status === "Coming Soon").length,
-    3,
-  );
+test("Registry preserves 30 tools and adds ten distinct student tools", () => {
+  assert.equal(tools.length, 40);
+  assert.equal(new Set(tools.map(tool => tool.slug)).size, 40);
+  assert.equal(studentTools.length, 10);
+  assert.equal(tools.filter(tool => tool.category !== "student" && tool.status === "Available").length, 30);
+  assert.deepEqual(tools.filter(tool => tool.status === "Requires Setup").map(tool => tool.slug), ["ai-notes-summarizer"]);
+  assert.deepEqual(retiredTools.map(tool => tool.slug), ["instagram-video-downloader", "tiktok-video-downloader", "threads-video-downloader"]);
+  assert.ok(retiredTools.every(retired => !tools.some(tool => tool.slug === retired.slug)));
   assert.equal(legacyToolRoutes.size, 16);
-  assert.deepEqual(tools.filter(tool => tool.status === "Coming Soon").map(tool => tool.slug),
-    ["instagram-video-downloader", "tiktok-video-downloader", "threads-video-downloader"]);
   for (const [legacy, target] of legacyToolRoutes) {
     assert.notEqual(legacy, target.slug);
     assert.ok(tools.some((tool) => tool.slug === target.slug));

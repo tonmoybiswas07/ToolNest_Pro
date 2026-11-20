@@ -1,3 +1,4 @@
+import { toolHref } from "@/features/tools/registry";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { personalAnalytics } from "@/features/analytics/personal";
@@ -45,7 +46,7 @@ export default async function DashboardPage() {
                     <li key={tool.slug}>
                       <Link
                         className="text-highlight hover:underline"
-                        href={`/tools/${tool.slug}`}
+                        href={toolHref(tool)}
                       >
                         {tool.name}
                       </Link>

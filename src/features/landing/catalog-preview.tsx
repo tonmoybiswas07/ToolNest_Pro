@@ -4,7 +4,7 @@ import { motion } from "motion/react";
 import { Layers3 } from "lucide-react";
 import { categories, type CategoryId } from "@/features/tools/registry";
 
-const previewCategories: CategoryId[] = ["image", "document", "developer", "text", "design", "social"];
+const previewCategories: CategoryId[] = ["image", "document", "developer", "text", "design", "student"];
 
 export function CatalogPreview() {
   return (
