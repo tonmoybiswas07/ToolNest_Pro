@@ -2,6 +2,8 @@ import Link from "next/link";
 import { LayoutGrid, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CatalogPreview } from "@/features/landing/catalog-preview";
+import { RecentHomeTools } from "@/features/landing/recent-home-tools";
+import { HomeTasks } from "@/features/landing/home-tasks";
 import { CategoryCard, ToolCard } from "@/features/tools/cards";
 import { categoryIds, featuredTools, tools } from "@/features/tools/registry";
 
@@ -22,6 +24,8 @@ export default function Home() {
           <CatalogPreview />
         </div>
       </section>
+      <HomeTasks />
+      <RecentHomeTools />
       <section className="shell section-space" aria-labelledby="featured-heading">
         <div className="mb-7 flex flex-wrap items-end justify-between gap-4">
           <div>

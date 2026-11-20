@@ -1,5 +1,7 @@
 "use client";
 
+import { draftKeys, localDraftId } from "@/features/dashboard/draft-storage";
+
 import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -39,7 +41,7 @@ const initial: Gradient = {
     { color: "#3668e8", position: 100 },
   ],
 };
-const storageKey = "toolnest-gradient-presets-v1";
+const storageKey = draftKeys.gradients;
 
 function isPresets(value: unknown): value is Preset[] {
   return (
@@ -67,11 +69,11 @@ function isPresets(value: unknown): value is Preset[] {
 }
 
 export default function GradientStudio({ slug }: StudioProps) {
-  const [gradient, setGradient] = useState(initial);
   const [presets, setPresets] = useState(() =>
     readStorage(storageKey, isPresets, []),
   );
-  const [name, setName] = useState("");
+  const [gradient, setGradient] = useState(() => presets.find(item => item.name === localDraftId()) ?? initial);
+  const [name, setName] = useState(() => presets.find(item => item.name === localDraftId())?.name ?? "");
   const [changed, setChanged] = useState(false);
   let css = "";
   try {

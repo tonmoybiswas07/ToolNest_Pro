@@ -1,5 +1,7 @@
 "use client";
 
+import { draftKeys, localDraftId } from "@/features/dashboard/draft-storage";
+
 import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -25,7 +27,7 @@ import {
   Workspace,
 } from "./shared";
 
-const storageKey = "toolnest-prompt-templates-v1";
+const storageKey = draftKeys.prompts;
 const templates = [
   {
     id: "builtin-editor",
@@ -52,11 +54,12 @@ const templates = [
 ];
 
 export default function PromptBuilder({ slug }: StudioProps) {
-  const [fields, setFields] = useState<Prompt>(blankPrompt);
   const [saved, setSaved] = useState(() =>
     readStorage(storageKey, isTemplates, []),
   );
-  const [selected, setSelected] = useState<string>();
+  const [initialDraft] = useState(() => saved.find(item => item.id === localDraftId()));
+  const [fields, setFields] = useState<Prompt>(initialDraft?.fields ?? blankPrompt);
+  const [selected, setSelected] = useState<string | undefined>(initialDraft?.id);
   const [search, setSearch] = useState("");
   const [changed, setChanged] = useState(false);
   const output = composePrompt(fields);

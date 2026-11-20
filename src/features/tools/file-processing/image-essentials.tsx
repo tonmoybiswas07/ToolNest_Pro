@@ -1,5 +1,11 @@
 "use client";
 
+import {
+  initialToolSettings,
+  rememberSettings,
+  type ToolSettings,
+} from "@/features/dashboard/device-work";
+import { SavePreset } from "@/features/dashboard/save-preset";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,18 +49,24 @@ import {
 export default function ImageEssentials({ slug }: StudioProps) {
   const resize = slug === "image-resizer";
   const compress = slug === "image-compressor";
+  const [restored] = useState(() =>
+    resize ? initialToolSettings("image-resizer") : undefined,
+  );
+  const [keepDimensions, setKeepDimensions] = useState(Boolean(restored));
   const [files, setFiles] = useState<File[]>([]);
   const [info, setInfo] = useState<ImageInfo>();
   const [inputError, setInputError] = useState("");
   const [checking, setChecking] = useState(false);
   const [options, setOptions] = useState<ImageOptions>({
     ...defaultImageOptions,
-    format: compress ? "original" : "image/png",
+    format: restored?.format ?? (compress ? "original" : "image/png"),
+    quality: restored?.quality ?? defaultImageOptions.quality,
+    background: restored?.background ?? defaultImageOptions.background,
   });
-  const [width, setWidth] = useState("");
-  const [height, setHeight] = useState("");
+  const [width, setWidth] = useState(String(restored?.width ?? ""));
+  const [height, setHeight] = useState(String(restored?.height ?? ""));
   const [scale, setScale] = useState("100");
-  const [locked, setLocked] = useState(true);
+  const [locked, setLocked] = useState(!restored);
   const [cropEnabled, setCropEnabled] = useState(false);
   const [crop, setCrop] = useState<Crop>(fullCrop);
   const job = useFileJob(slug);
@@ -83,8 +95,10 @@ export default function ImageEssentials({ slug }: StudioProps) {
       }
       setFiles(input);
       setInfo(valid[0]);
-      setWidth(String(valid[0].width));
-      setHeight(String(valid[0].height));
+      if (!keepDimensions) {
+        setWidth(String(valid[0].width));
+        setHeight(String(valid[0].height));
+      }
       setScale("100");
       setCrop(fullCrop);
     } catch (error) {
@@ -135,42 +149,58 @@ export default function ImageEssentials({ slug }: StudioProps) {
     }
   }
 
+  const settings: ToolSettings = {
+    slug: "image-resizer",
+    width: Number(width),
+    height: Number(height),
+    format: options.format === "original" ? "image/png" : options.format,
+    quality: options.quality,
+    background: options.background,
+  };
   function process() {
-    void job.run(async ({ signal, progress }) => {
-      if (resize) boundedDimensions(Number(width), Number(height));
-      const results: Artifact[] = [];
-      let total = 0;
-      for (let i = 0; i < files.length; i++) {
-        signal.throwIfAborted();
-        progress(`Processing image ${i + 1} of ${files.length}…`);
-        const file = files[i];
-        const result = await imageJob(
-          file,
-          {
-            ...options,
-            ...(resize
-              ? {
-                  width: Number(width),
-                  height: Number(height),
-                  crop: cropEnabled ? crop : undefined,
-                }
-              : {}),
-          },
-          signal,
-        );
-        total += result.blob.size;
-        if (total > 96 * MiB)
-          throw new Error(
-            "The outputs exceed 96 MB. Process fewer files or use a smaller output.",
+    void job.run(
+      async ({ signal, progress }) => {
+        if (resize) boundedDimensions(Number(width), Number(height));
+        const results: Artifact[] = [];
+        let total = 0;
+        for (let i = 0; i < files.length; i++) {
+          signal.throwIfAborted();
+          progress(`Processing image ${i + 1} of ${files.length}…`);
+          const file = files[i];
+          const result = await imageJob(
+            file,
+            {
+              ...options,
+              ...(resize
+                ? {
+                    width: Number(width),
+                    height: Number(height),
+                    crop: cropEnabled ? crop : undefined,
+                  }
+                : {}),
+            },
+            signal,
           );
-        results.push({ ...result, source: file });
-      }
-      return results;
-    });
+          total += result.blob.size;
+          if (total > 96 * MiB)
+            throw new Error(
+              "The outputs exceed 96 MB. Process fewer files or use a smaller output.",
+            );
+          results.push({ ...result, source: file });
+        }
+        return results;
+      },
+      resize ? () => rememberSettings(settings) : undefined,
+    );
   }
 
   return (
     <FileWorkspace job={job} notice={imageLimits}>
+      {keepDimensions && !files.length && (
+        <Notice>
+          Saved resize settings loaded. Choose a new source image.
+        </Notice>
+      )}
       <FileDropzone
         label="Choose images"
         accept={acceptImages}
@@ -371,6 +401,9 @@ export default function ImageEssentials({ slug }: StudioProps) {
             type="button"
             variant="ghost"
             onClick={() => {
+              setKeepDimensions(false);
+              setWidth("");
+              setHeight("");
               setFiles([]);
               setInfo(undefined);
               setInputError("");
@@ -388,6 +421,7 @@ export default function ImageEssentials({ slug }: StudioProps) {
             Reset
           </Button>
         </Actions>
+        {resize && info && <SavePreset settings={settings} />}
       </fieldset>
     </FileWorkspace>
   );

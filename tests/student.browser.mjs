@@ -446,6 +446,128 @@ try {
     .locator("..")
     .getByRole("link", { name: "Assignment & Deadline Tracker", exact: true })
     .waitFor();
+  const imageFixture = {
+    name: "dashboard.png",
+    mimeType: "image/png",
+    buffer: await sample("Test image", undefined, "image/png"),
+  };
+  await go("/tools/image-resizer", "Image Resizer");
+  await field("Choose images").setInputFiles(imageFixture);
+  await field("Lock aspect ratio").uncheck();
+  await field("Width (px)").fill("240");
+  await field("Height (px)").fill("90");
+  await field("Preset name").fill("Dashboard preset");
+  await button("Save preset").click();
+  await visible("Preset saved on this device.");
+  await button("Resize image").click();
+  await page.getByRole("button", { name: /^Download dashboard/ }).waitFor();
+  await go("/dashboard", "Your dashboard");
+  await visible("Student snapshot");
+  await visible("Output files created");
+  assert.equal(
+    await page
+      .getByText("Output files created", { exact: true })
+      .locator("..")
+      .locator("dd")
+      .textContent(),
+    "1",
+  );
+  await page.getByRole("link", { name: /Dashboard preset/ }).click();
+  await visible("Saved resize settings loaded. Choose a new source image.");
+  await field("Choose images").setInputFiles(imageFixture);
+  await field("Width (px)").waitFor();
+  assert.equal(await field("Width (px)").inputValue(), "240");
+  assert.equal(await field("Height (px)").inputValue(), "90");
+
+  await go("/tools/pdf-compressor", "PDF Compressor");
+  await field("Choose a PDF").setInputFiles({
+    name: "source.pdf",
+    mimeType: "application/pdf",
+    buffer: Buffer.from(await pdf.save()),
+  });
+  await field("Output size target (KB, optional)").fill("32");
+  await button("Process PDF").click();
+  await visible(/Within target .*32 KB target/);
+  await go("/dashboard", "Your dashboard");
+  const resume = page
+    .getByRole("heading", { name: "Continue where you left off" })
+    .locator("..");
+  await resume.getByRole("link", { name: /PDF Compressor/ }).click();
+  assert.equal(
+    await field("Output size target (KB, optional)").inputValue(),
+    "32",
+  );
+
+  await go("/dashboard", "Your dashboard");
+  const pin = page.getByRole("button", {
+    name: "Pin Merge PDF → Compress → Check size",
+    exact: true,
+  });
+  await pin.click();
+  await page
+    .getByRole("button", {
+      name: "Unpin Merge PDF → Compress → Check size",
+      exact: true,
+    })
+    .waitFor();
+  await page
+    .getByRole("link", { name: /Merge PDF → Compress → Check size/ })
+    .click();
+  const bytes = Buffer.from(await pdf.save());
+  await field("Choose PDF files").setInputFiles(
+    ["first.pdf", "second.pdf"].map((name) => ({
+      name,
+      mimeType: "application/pdf",
+      buffer: bytes,
+    })),
+  );
+  await button("Run workflow").click();
+  await button("Download merged.pdf").waitFor();
+  await visible(/Within target .*2048 KB target/);
+
+  await go(
+    "/dashboard/workflows/resize-compress",
+    "Resize → Compress → Export",
+  );
+  await field("Choose an image").setInputFiles(imageFixture);
+  await button("Run workflow").click();
+  await page
+    .getByRole("button", { name: /^Download dashboard.*jpg/ })
+    .waitFor();
+
+  await page.evaluate(() => {
+    localStorage.setItem(
+      "toolnest-notes-v1",
+      JSON.stringify([
+        {
+          id: "first",
+          title: "First draft",
+          content: "Unrelated",
+          tags: "",
+          updated: 1,
+          pinned: false,
+        },
+        {
+          id: "second",
+          title: "Dashboard draft",
+          content: "Open this exact draft",
+          tags: "",
+          updated: 2,
+          pinned: false,
+        },
+      ]),
+    );
+  });
+  await go("/dashboard", "Your dashboard");
+  await page.getByRole("link", { name: /Dashboard draft/ }).click();
+  await page.waitForFunction(() =>
+    Array.from(document.querySelectorAll("textarea")).some(
+      (input) => input.value === "Open this exact draft",
+    ),
+  );
+  console.log(
+    "Dashboard resume, presets, both workflows, draft links, student snapshot, and measured file results passed.",
+  );
   assert.deepEqual(pageErrors, []);
   console.log(
     "Authenticated browser sync and favorites passed; all 30 legacy workspaces opened.",

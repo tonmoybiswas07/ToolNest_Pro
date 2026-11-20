@@ -1,5 +1,7 @@
 "use client";
 
+import { draftKeys, localDraftId } from "@/features/dashboard/draft-storage";
+
 import { useDeferredValue, useEffect, useRef, useState } from "react";
 import Markdown from "react-markdown";
 import { toast } from "sonner";
@@ -27,13 +29,13 @@ import {
   type StudioProps,
 } from "./shared";
 
-const storageKey = "toolnest-notes-v1";
+const storageKey = draftKeys.notes;
 
 export default function NotesStudio({ slug }: StudioProps) {
   const [notes, setNotes] = useState(() =>
     readStorage(storageKey, isNotes, []),
   );
-  const [selected, setSelected] = useState(() => notes[0]?.id);
+  const [selected, setSelected] = useState(() => notes.find(item => item.id === localDraftId())?.id ?? notes[0]?.id);
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<"recent" | "oldest">("recent");
   const [storageError, setStorageError] = useState(false);

@@ -1,5 +1,11 @@
 "use client";
 
+import {
+  initialToolSettings,
+  rememberSettings,
+  type ToolSettings,
+} from "@/features/dashboard/device-work";
+import { SavePreset } from "@/features/dashboard/save-preset";
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -14,9 +20,9 @@ import {
 } from "../studios/shared";
 import { Slider } from "../studios/design-controls";
 import { acceptImages } from "./image-controls";
-import { inspectImage, type Artifact, type Job } from "./files";
+import { fileSize, inspectImage, type Artifact } from "./files";
 import type { PdfFontStyle } from "./browser-text-pdf";
-import type { Metadata, PageEdit, PdfCommand, Watermark } from "./pdf-engine";
+import type { Metadata, PageEdit, Watermark } from "./pdf-engine";
 import { renderPdf } from "./pdf-render";
 import { GeneratedPdfViewer } from "./generated-pdf-viewer";
 import {
@@ -32,7 +38,7 @@ import {
   FileWorkspace,
   useFileJob,
 } from "./workspace";
-import { workerJob } from "./worker-job";
+import { pdfJob } from "./pdf-job";
 
 const pdfAccept = "application/pdf,.pdf";
 const pdfLimit = "PDF files only. Up to 30 MB per file and 500 pages.";
@@ -43,14 +49,6 @@ const watermarkDefault: Watermark = {
 };
 const metadataFields = ["title", "author", "subject", "keywords"] as const;
 type PdfInfo = Metadata & { count: number };
-
-function pdfJob<T>(command: PdfCommand, job: Job) {
-  const worker = new Worker(
-    new URL("./pdf-operations.worker.ts", import.meta.url),
-    { type: "module" },
-  );
-  return workerJob<T>(worker, command, job.signal, 90000, job.progress);
-}
 
 function usePdfFiles(clear: () => void) {
   const [rows, setRows] = useState<{ file: File; info: PdfInfo }[]>([]);
@@ -261,13 +259,26 @@ function SingleOperation({ slug }: StudioProps) {
   const row = source.rows[0];
   const [range, setRange] = useState("");
   const [separate, setSeparate] = useState(false);
-  const [raster, setRaster] = useState(false);
+  const [restored, setRestored] = useState(() =>
+    split ? undefined : initialToolSettings("pdf-compressor"),
+  );
+  const [raster, setRaster] = useState(restored?.raster ?? false);
   const [confirmed, setConfirmed] = useState(false);
-  const [quality, setQuality] = useState(65);
+  const [quality, setQuality] = useState(restored?.quality ?? 65);
+  const [limit, setLimit] = useState(String(restored?.limit || ""));
+  const settings: ToolSettings = {
+    slug: "pdf-compressor",
+    raster,
+    quality,
+    limit: Number(limit),
+  };
   const [preview, setPreview] = useState(false);
 
   return (
     <FileWorkspace job={job} notice={pdfLimit}>
+      {restored && !row && (
+        <Notice>Saved PDF settings loaded. Choose a new source PDF.</Notice>
+      )}
       <PdfPicker source={source} busy={job.busy} />
       <fieldset disabled={job.busy || source.checking} className="space-y-3">
         {split ? (
@@ -327,6 +338,18 @@ function SingleOperation({ slug }: StudioProps) {
                 ? "Rasterization replaces each page with an image. It can remove searchable text, vectors, forms, annotations, links, signatures, and accessibility information."
                 : "Repacking compresses compatible PDF structures and keeps text and vectors. Existing image streams are left as-is. The output can be the same size or larger."}
             </Notice>
+            <Field label="Output size target (KB, optional)">
+              <Input
+                type="number"
+                min={1}
+                max={30720}
+                value={limit}
+                onChange={(event) => {
+                  setLimit(event.target.value);
+                  job.clear();
+                }}
+              />
+            </Field>
             {raster && (
               <>
                 <Slider
@@ -352,34 +375,44 @@ function SingleOperation({ slug }: StudioProps) {
         <Actions>
           <Button
             type="button"
-            disabled={!row || (!split && raster && !confirmed)}
+            disabled={
+              !row ||
+              (!split &&
+                (!Number.isInteger(settings.limit) ||
+                  settings.limit < 0 ||
+                  settings.limit > 30720 ||
+                  (raster && !confirmed)))
+            }
             onClick={() => {
               if (!row) return;
-              void job.run(async (context) => {
-                if (split)
+              void job.run(
+                async (context) => {
+                  if (split)
+                    return pdfJob<Artifact[]>(
+                      { type: "split", file: row.file, range, separate },
+                      context,
+                    );
+                  if (!raster)
+                    return pdfJob<Artifact[]>(
+                      { type: "optimize", file: row.file },
+                      context,
+                    );
+                  const images = await renderPdf(
+                    row.file,
+                    "",
+                    1.2,
+                    "image/jpeg",
+                    context,
+                    20,
+                    quality / 100,
+                  );
                   return pdfJob<Artifact[]>(
-                    { type: "split", file: row.file, range, separate },
+                    { type: "raster", file: row.file, images },
                     context,
                   );
-                if (!raster)
-                  return pdfJob<Artifact[]>(
-                    { type: "optimize", file: row.file },
-                    context,
-                  );
-                const images = await renderPdf(
-                  row.file,
-                  "",
-                  1.2,
-                  "image/jpeg",
-                  context,
-                  20,
-                  quality / 100,
-                );
-                return pdfJob<Artifact[]>(
-                  { type: "raster", file: row.file, images },
-                  context,
-                );
-              });
+                },
+                !split ? () => rememberSettings(settings) : undefined,
+              );
             }}
           >
             {split ? "Extract pages" : "Process PDF"}
@@ -394,12 +427,23 @@ function SingleOperation({ slug }: StudioProps) {
               setRaster(false);
               setConfirmed(false);
               setQuality(65);
+              setLimit("");
+              setRestored(undefined);
               setPreview(false);
             }}
           >
             Reset
           </Button>
         </Actions>
+        {!split && Number(limit) > 0 && job.output[0] && (
+          <Notice>
+            {job.output[0].blob.size <= Number(limit) * 1024
+              ? "Within target"
+              : "Over target"}{" "}
+            · {fileSize(job.output[0].blob.size)} for a {limit} KB target
+          </Notice>
+        )}
+        {!split && <SavePreset settings={settings} />}
       </fieldset>
     </FileWorkspace>
   );

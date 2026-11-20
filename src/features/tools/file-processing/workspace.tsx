@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { recordFileResults } from "@/features/dashboard/device-work";
 import { UploadCloud } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,7 +23,10 @@ export function useFileJob(slug: string) {
 
   useEffect(() => () => active.current?.abort(), []);
 
-  async function run(operation: (job: Job) => Promise<Artifact[]>) {
+  async function run(
+    operation: (job: Job) => Promise<Artifact[]>,
+    onSuccess?: () => void,
+  ) {
     if (active.current) return;
     const controller = new AbortController();
     active.current = controller;
@@ -42,6 +46,8 @@ export function useFileJob(slug: string) {
       if (!files.length || files.some((file) => !file.blob.size))
         throw new Error("Processing produced no valid output.");
       setOutput(files);
+      recordFileResults(files);
+      onSuccess?.();
       trackOperation(slug, true);
     } catch (cause) {
       if (!signal.aborted) {

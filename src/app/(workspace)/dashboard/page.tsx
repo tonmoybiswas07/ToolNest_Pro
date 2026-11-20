@@ -1,3 +1,6 @@
+import { DashboardWork } from "@/features/dashboard/dashboard-work";
+import { StudentSnapshot } from "@/features/dashboard/student-snapshot";
+import { readWorkspace } from "@/features/student/storage";
 import { toolHref } from "@/features/tools/registry";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -12,26 +15,25 @@ export const metadata: Metadata = { title: "Dashboard" };
 export default async function DashboardPage() {
   const { user } = await requireSession();
 
-  const activity = await personalAnalytics(user.id).catch(() => null);
+  const [activity, student] = await Promise.all([
+    personalAnalytics(user.id).catch(() => null),
+    readWorkspace(user.id).catch(() => null),
+  ]);
 
   return (
-    <div className="max-w-4xl">
-      <h1 className="page-title">Your dashboard</h1>
-      <AccountSummary user={user} />
-      <div className="mt-5 flex flex-wrap gap-2">
-        {user.role === "admin" && (
-          <Button asChild>
-            <Link href="/admin">Admin dashboard</Link>
-          </Button>
-        )}
-        <Button variant="outline" asChild>
-          <Link href="/settings#privacy">Privacy settings</Link>
-        </Button>
+    <div className="max-w-6xl">
+      <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
+        <h1 className="page-title">Your dashboard</h1>
         <Button variant="outline" asChild>
           <Link href="/tools">Browse tools</Link>
         </Button>
-        <LogoutButton />
-      </div>
+      </header>
+      <DashboardWork />
+      {student && (
+        <div className="mt-4">
+          <StudentSnapshot data={student.data} />
+        </div>
+      )}
       {activity ? (
         <div className="mt-8 grid gap-4 sm:grid-cols-2">
           {[
@@ -73,6 +75,20 @@ export default async function DashboardPage() {
           Tool activity is temporarily unavailable.
         </p>
       )}
+      <div className="mt-8">
+        <AccountSummary user={user} />
+        <div className="mt-5 flex flex-wrap gap-2">
+          {user.role === "admin" && (
+            <Button asChild>
+              <Link href="/admin">Admin dashboard</Link>
+            </Button>
+          )}
+          <Button variant="outline" asChild>
+            <Link href="/settings#privacy">Privacy settings</Link>
+          </Button>
+          <LogoutButton />
+        </div>
+      </div>
     </div>
   );
 }
