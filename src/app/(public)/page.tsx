@@ -3,9 +3,10 @@ import { LayoutGrid, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { HeroClock } from "@/features/landing/hero-clock";
 import { RecentHomeTools } from "@/features/landing/recent-home-tools";
-import { HomeTasks } from "@/features/landing/home-tasks";
 import { CategoryCard, ToolCard } from "@/features/tools/cards";
 import { categoryIds, featuredTools, tools } from "@/features/tools/registry";
+
+export const metadata = { alternates: { canonical: "/" } };
 
 export default function Home() {
   return (
@@ -24,7 +25,6 @@ export default function Home() {
           <HeroClock toolCount={tools.length} categoryCount={categoryIds.length} />
         </div>
       </section>
-      <HomeTasks />
       <RecentHomeTools />
       <section className="shell section-space" aria-labelledby="featured-heading">
         <div className="mb-7 flex flex-wrap items-end justify-between gap-4">

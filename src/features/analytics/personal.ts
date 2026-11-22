@@ -39,3 +39,18 @@ export async function personalAnalytics(userId: string) {
     executionCount,
   };
 }
+
+export async function dailyExecutionCounts(userId: string, now = new Date()) {
+  const days = Array.from({ length: 14 }, (_, index) => {
+    const day = new Date(now);
+    day.setUTCHours(0, 0, 0, 0);
+    day.setUTCDate(day.getUTCDate() - (13 - index));
+    return day;
+  });
+  const rows = await applicationMongo().db.collection("tool_usage_events").aggregate<{ _id: string; count: number }>([
+    { $match: { userId, type: "executed", at: { $gte: days[0], $lte: now }, expiresAt: { $gt: now } } },
+    { $group: { _id: { $dateToString: { format: "%Y-%m-%d", date: "$at", timezone: "UTC" } }, count: { $sum: 1 } } },
+  ]).toArray();
+  const counts = new Map(rows.map(({ _id, count }) => [_id, count]));
+  return days.map(day => ({ day, count: counts.get(day.toISOString().slice(0, 10)) ?? 0 }));
+}

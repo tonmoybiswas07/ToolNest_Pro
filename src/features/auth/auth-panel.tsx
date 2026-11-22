@@ -164,6 +164,7 @@ export function AuthPanel({
               name: result.data.name,
               email,
               password,
+              callbackURL: "/settings",
             })
           : await authClient.signIn.email({
               email,

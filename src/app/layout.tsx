@@ -3,9 +3,11 @@ import type { ReactNode } from "react";
 import "@fontsource-variable/geist";
 import { EntryLoader, EntryLoaderScript } from "@/components/site/entry-loader";
 import { Providers } from "@/components/site/providers";
+import { siteUrl } from "@/lib/site-url";
 import "./globals.css";
 
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl()),
   title: {
     default: "ToolNest Pro | Everyday tools in one place",
     template: "%s | ToolNest Pro",

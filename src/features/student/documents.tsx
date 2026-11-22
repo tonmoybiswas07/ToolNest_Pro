@@ -663,8 +663,9 @@ export function Summarizer({
                 disabled={busy}
                 onChange={(event) => setConsent(event.target.checked)}
               />
-              I agree to send the text shown above to OpenAI for this request.
-              Check the summary against your source before relying on it.
+              I agree to send the text shown above to the configured AI
+              provider for this request. Check the summary against your source
+              before relying on it.
             </label>
             <Button
               disabled={busy || !consent || text.trim().length < 20}

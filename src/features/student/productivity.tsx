@@ -85,7 +85,11 @@ export function Pomodoro() {
         try {
           new Notification(`${phase} complete`);
         } catch {
-          toast.info(`${phase} complete`);
+          void navigator.serviceWorker?.getRegistration().then((registration) => {
+            if (!registration) throw new Error("Notifications unavailable");
+            return registration.showNotification(`${phase} complete`);
+          }).catch(() => toast.info(`${phase} complete`));
+          if (!navigator.serviceWorker) toast.info(`${phase} complete`);
         }
       } else toast.info(`${phase} complete`);
     }

@@ -1,6 +1,6 @@
 # ToolNest Pro
 
-ToolNest Pro is a Next.js catalog for 40 tools. Phase 2 adds accounts and sessions. Phase 3 adds the role-protected admin dashboard and activity reporting. Student Hub adds academic planning, study, and research workspaces.
+ToolNest Pro is a Next.js catalog of browser tools, account workspaces, and role-protected administration. Student Hub includes academic planning, study, and research tools.
 
 ## Run locally
 
@@ -43,6 +43,11 @@ Use the canonical HTTPS origin for all auth traffic. If a reverse proxy fronts t
 
 Google and email/password accounts cannot be implicitly linked. If an email is already registered, use the sign-in method used to create the account.
 
+- Set `RESEND_API_KEY` and `AUTH_EMAIL_FROM` to enable verification email delivery. Use a sender on a domain verified in Resend.
+- Public canonical URLs, the sitemap, and robots metadata use `SITE_URL` when set and fall back to `BETTER_AUTH_URL`. Set the canonical origin when building for production.
+- For Instagram, TikTok, and Threads, configure `SOCIAL_DOWNLOAD_PROVIDER_URL` with an authorized HTTPS resolver and use `SOCIAL_DOWNLOAD_PROVIDER_TOKEN` if it requires a bearer token. The resolver accepts POST JSON with `platform` and `url` and returns an HTTPS `downloadUrl` that serves the file with `Content-Disposition: attachment`. Use status 404 or 422 when a video is unavailable. The tools include platform download guidance for users without a resolver.
+- The production service worker caches versioned Next.js assets and serves an offline fallback when navigation fails. Signed-in pages and API responses are fetched from the server.
+
 ## Verification
 
 ```sh
@@ -77,8 +82,8 @@ The role workflow and web moderation share a transactional guard. They reject ch
 - Search events are anonymous by default. Opting in associates only recognized catalog terms with the signed-in user. Deleting history removes those user associations and disables further personalization. Aggregate counts remain available.
 - `activity_events`, `tool_usage_events`, and `search_analytics` have timestamp and expiry indexes. The default retention is 30 days, adjustable from 7 to 90 days for newly recorded events. Additional indexes cover user lookups and activity type. MongoDB TTL cleanup is asynchronous.
 - `admin_settings` stores global settings and user preferences. `admin_audit_logs` is indexed by date and administrator and retained indefinitely by the application. Set a separate operational retention policy as needed. The application offers no audit mutation endpoints.
-- Failed credential responses are recorded without email or user ID. OAuth failures are excluded when their outcome cannot be attributed reliably. Logout is recorded with an active session. Export and account-deletion workflows are unavailable.
-- Tool pages record opens and actual favorite changes. Execution metrics only count execution outcomes. Phases 4–6A implement 30 browser-based tools. The three social downloaders are still planned.
+- Failed credential responses are recorded without email or user ID. OAuth failures are excluded when their outcome cannot be attributed reliably. Logout is recorded with an active session. Account settings support password changes and account deletion.
+- Tool pages record opens and actual favorite changes. Execution metrics only count execution outcomes. Admins can read submissions at `/admin/feedback` and filter by feedback, bug, or suggestion.
 
 Run the Phase 3 integration suite after a production build with a local MongoDB replica set. The suite creates and drops a randomly named database on loopback.
 
@@ -88,11 +93,11 @@ TOOLNEST_TEST_MONGO='mongodb://127.0.0.1:37129/?replicaSet=toolnest-qa' node tes
 
 ### Browser studios
 
-The ten available studios process JSON, JWTs, regex input, code, QR data, prompts, and notes in the browser. The analytics endpoint receives only the registry slug, an operation outcome, and an event ID. It derives user identity from the session and rate-limits submissions. Execution counts are best-effort because the operations run on the client.
+Browser studios process JSON, JWTs, regex input, code, QR data, prompts, and notes in the browser. The analytics endpoint receives only the registry slug, an operation outcome, and an event ID. It derives user identity from the session and rate-limits submissions. Execution counts are best-effort because the operations run on the client.
 
 Saved gradient presets, prompt templates, and notes live in this browser's local storage. Export any work you want to keep before clearing site data or switching devices. Notes render Markdown with raw HTML and external image loading disabled.
 
-The 33-entry catalog includes 30 available tools and three planned entries. Former placeholder URLs for renamed tools redirect to their canonical URLs.
+Former placeholder URLs for renamed tools redirect to their canonical URLs.
 
 Run the studio engine tests on Node.js 24 with:
 
@@ -121,9 +126,9 @@ Phase 6A adds URL encoding, text statistics, case conversion, color conversion, 
 
 ## Student Hub
 
-Open `/student` to browse ten academic tools and `/student/settings` to create shared courses, set the time zone, and choose attendance and study targets. Guests use a browser-local workspace. Signed-in users have a separate synced workspace. The two workspaces are independent.
+Open `/student` to browse academic tools and `/student/settings` to create shared courses, set the time zone, and choose attendance and study targets. Guests use a browser-local workspace. Signed-in users have a separate synced workspace. The two workspaces are independent.
 
-Student Hub uses `student_profiles`, `student_courses`, `student_assignments`, `student_class_schedules`, `student_attendance`, `student_grades`, `student_flashcards`, `student_study_sessions`, `student_exam_plans`, and `student_notes`. Each collection stores one document per account, keyed by the Better Auth user ID. The built-in unique `_id` indexes support owner-scoped reads and writes. A revision check and MongoDB snapshot transactions keep shared records consistent across devices. Use a replica set or Atlas deployment that supports transactions. The workspace payload limit is 500 KB. The optional AI endpoint creates `student_summary_limits` with MongoDB's unique `_id` index and a TTL index named `student_summary_expiry` on `expiresAt`. The existing analytics and favorites collections continue using the same tool identifiers, including retired identifiers in historical reports.
+Student Hub uses `student_profiles`, `student_courses`, `student_assignments`, `student_class_schedules`, `student_attendance`, `student_grades`, `student_flashcards`, `student_study_sessions`, `student_exam_plans`, and `student_notes`. Each collection stores one document per account, keyed by the Better Auth user ID. The built-in unique `_id` indexes support owner-scoped reads and writes. A revision check and MongoDB snapshot transactions keep shared records consistent across devices. Use a replica set or Atlas deployment that supports transactions. The workspace payload limit is 500 KB. The optional AI endpoint creates `student_summary_limits` with MongoDB's unique `_id` index and a TTL index named `student_summary_expiry` on `expiresAt`. The existing analytics and favorites collections continue using the same tool identifiers, including the identifiers of the restored social tools.
 
 PDF text extraction and English/Bengali image OCR run in the browser. Scanned PDF pages need OCR. The optional AI summarizer supports either Google Gemini API or OpenAI Responses API after explicit consent. To enable it, set `GEMINI_API_KEY` (and optionally `GEMINI_MODEL`, defaulting to `gemini-1.5-flash`) or `STUDENT_OPENAI_API_KEY` and `STUDENT_OPENAI_MODEL` on the server. Each signed-in account can make five requests per UTC day, with at most 18,000 source characters and 1,800 output tokens per request. Review summaries against their source.
 

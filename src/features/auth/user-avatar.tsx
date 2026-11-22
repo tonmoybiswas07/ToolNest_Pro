@@ -4,23 +4,7 @@ import Image from "next/image";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 
-function avatarUrl(image?: string | null) {
-  if (!image) return;
-
-  try {
-    const url = new URL(image);
-    if (
-      url.protocol === "https:" &&
-      url.hostname === "lh3.googleusercontent.com" &&
-      !url.username &&
-      !url.password
-    ) {
-      return url.href;
-    }
-  } catch {
-    return;
-  }
-}
+import { profileImageUrl } from "./profile-image";
 
 export function UserAvatar({
   name,
@@ -31,7 +15,7 @@ export function UserAvatar({
   image?: string | null;
   large?: boolean;
 }) {
-  const src = avatarUrl(image);
+  const src = profileImageUrl(image);
   const [failed, setFailed] = useState<string>();
   const size = large ? 64 : 36;
   const initials = name

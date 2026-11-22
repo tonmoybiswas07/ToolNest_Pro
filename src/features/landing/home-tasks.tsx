@@ -1,6 +1,6 @@
 import { FolderCard, ToolLoginBadge } from "@/features/tools/cards";
 import { ArrowUpRight } from "lucide-react";
-import { categories, findTool, toolHref } from "@/features/tools/registry";
+import { categories, findTool, toolHref, type Tool } from "@/features/tools/registry";
 
 const tasks = [
   ["pdf-compressor", "Shrink a PDF"],
@@ -9,14 +9,16 @@ const tasks = [
   ["exam-study-planner", "Plan for an exam"],
 ] as const;
 
-export function HomeTasks() {
+export function HomeTasks({ favorites = [], recent = [] }: { favorites?: Tool[]; recent?: Tool[] }) {
+  const personalized = new Map([...favorites, ...recent].map(tool => [tool.slug, tool.name]));
+  const ordered = [...personalized, ...tasks.filter(([slug]) => !personalized.has(slug))];
   return (
     <section className="shell pt-12 sm:pt-16" aria-labelledby="task-heading">
       <h2 id="task-heading" className="section-title mb-5">
-        Start with a task
+        {personalized.size ? "Your quick tasks" : "Start with a task"}
       </h2>
       <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        {tasks.map(([slug, label]) => {
+        {ordered.slice(0, 4).map(([slug, label]) => {
           const tool = findTool(slug);
           if (!tool) return null;
 

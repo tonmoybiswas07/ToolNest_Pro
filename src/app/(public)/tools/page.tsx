@@ -4,6 +4,7 @@ import { categoryIds } from "@/features/tools/registry";
 
 export const metadata: Metadata = {
   title: "Tools Directory",
+  alternates: { canonical: "/tools" },
   description: "Search the ToolNest Pro catalog and explore tools by category.",
 };
 

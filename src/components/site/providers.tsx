@@ -8,6 +8,8 @@ import { CommandPalette } from "./command-palette";
 import { FeedbackModal } from "./feedback-modal";
 import { PwaRegister } from "./pwa-register";
 import { ConfirmProvider } from "@/components/ui/confirm-dialog";
+import { OfflineIndicator } from "./offline-indicator";
+import { KeyboardShortcutsModal } from "./keyboard-shortcuts-modal";
 
 export function Providers({ children }: { children: ReactNode }) {
   return (
@@ -18,6 +20,8 @@ export function Providers({ children }: { children: ReactNode }) {
           <CommandPalette />
           <FeedbackModal />
           <PwaRegister />
+          <OfflineIndicator />
+          <KeyboardShortcutsModal />
         </ConfirmProvider>
       </MotionConfig>
       <Toaster position="bottom-center" toastOptions={{ style: {

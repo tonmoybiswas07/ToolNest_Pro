@@ -6,6 +6,7 @@ import {
   inspectJwt,
   inferType,
   jsonText,
+  jsonToCsv,
   parseJson,
 } from "../src/features/tools/studios/data-engines.ts";
 import { matchRegex } from "../src/features/tools/studios/regex-engine.ts";
@@ -40,6 +41,20 @@ test("JSON preserves primitive values and high-precision numbers", () => {
   assert.throws(() => parseJson("{bad"));
   for (const input of ["null", "false", '"text"', "123", "[]"])
     assert.equal(jsonText(parseJson(input)), input);
+});
+
+test("JSON to CSV preserves exact numbers, nested documents, and missing cells", () => {
+  const value = parseJson('[{"name":"Ana\\rLee","grade":9007199254740993,"data":{"ok":true}},{"name":"=1+1","extra":true},{"__proto__":"own"}]');
+  const csv = jsonToCsv(value);
+  assert.equal(csv, [
+    "name,grade,data,extra,__proto__",
+    '"Ana\rLee",9007199254740993,"{""ok"":true}",,',
+    "'=1+1,,,true,",
+    ",,,,own",
+    "",
+  ].join("\r\n"));
+  assert.match(jsonToCsv(value, false), /\n=1\+1,,,true,/);
+  assert.throws(() => jsonToCsv(parseJson('[{"name":"Ana"},42]')), /array of objects/);
 });
 
 test("JWT handles expiration, absent claims, and malformed structures", () => {

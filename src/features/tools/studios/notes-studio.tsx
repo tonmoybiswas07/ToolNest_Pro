@@ -30,10 +30,9 @@ import {
   type StudioProps,
 } from "./shared";
 
-const storageKey = draftKeys.notes;
-
 export default function NotesStudio({ slug }: StudioProps) {
   const confirm = useConfirm();
+  const storageKey = slug === "study-notes-organizer" ? "toolnest-study-notes-v1" : draftKeys.notes;
   const [notes, setNotes] = useState(() =>
     readStorage(storageKey, isNotes, []),
   );
@@ -66,7 +65,7 @@ export default function NotesStudio({ slug }: StudioProps) {
       window.removeEventListener("pagehide", flushDraft);
       flushDraft();
     };
-  }, []);
+  }, [storageKey]);
 
   function persist(next: Note[]) {
     window.clearTimeout(timer.current);

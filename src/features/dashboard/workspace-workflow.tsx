@@ -24,13 +24,24 @@ import { Field, Notice } from "../tools/studios/shared";
 import type { WorkflowId } from "./device-work";
 
 export function WorkspaceWorkflow({ id }: { id: WorkflowId }) {
-  const image = id === "resize-compress";
+  const resize = id === "resize-compress";
+  const imagesToPdf = id === "images-pdf-check";
+  const extract = id === "extract-compress";
+  const isImage = resize || imagesToPdf;
+  const multiple = !resize && !extract;
   const [files, setFiles] = useState<File[]>([]);
   const [width, setWidth] = useState("1200");
   const [height, setHeight] = useState("630");
   const [quality, setQuality] = useState("82");
   const [target, setTarget] = useState("2048");
-  const job = useFileJob(image ? "image-resizer" : "pdf-merger");
+  const [range, setRange] = useState("1");
+  const tool = {
+    "resize-compress": "image-resizer",
+    "merge-check": "pdf-merger",
+    "images-pdf-check": "pdf-toolkit",
+    "extract-compress": "pdf-splitter",
+  }[id];
+  const job = useFileJob(tool);
 
   function select(input: File[]) {
     job.clear();
@@ -39,7 +50,7 @@ export function WorkspaceWorkflow({ id }: { id: WorkflowId }) {
 
   function run() {
     void job.run(async (context) => {
-      if (image) {
+      if (resize) {
         const source = files[0];
         boundedDimensions(Number(width), Number(height));
         const result = await imageJob(
@@ -56,28 +67,34 @@ export function WorkspaceWorkflow({ id }: { id: WorkflowId }) {
         return [{ ...result, source }];
       }
 
-      const [merged] = await pdfJob<Artifact[]>(
-        { type: "merge", files },
+      const [pdf] = await pdfJob<Artifact[]>(
+        imagesToPdf
+          ? { type: "images", files, pageSize: "A4", orientation: "portrait", margin: 24 }
+          : extract
+            ? { type: "split", file: files[0], range, separate: false }
+            : { type: "merge", files },
         context,
       );
-      context.progress("Repacking merged PDF…");
-      const [optimized] = await pdfJob<Artifact[]>(
-        {
-          type: "optimize",
-          file: new File([merged.blob], merged.name, {
-            type: "application/pdf",
-          }),
-        },
-        context,
-      );
-      const output =
-        optimized.blob.size < merged.blob.size ? optimized : merged;
+      let output = pdf;
+      if (!imagesToPdf) {
+        context.progress("Repacking PDF…");
+        const [optimized] = await pdfJob<Artifact[]>(
+          {
+            type: "optimize",
+            file: new File([pdf.blob], pdf.name, { type: "application/pdf" }),
+          },
+          context,
+        );
+        if (optimized.blob.size < pdf.blob.size) output = optimized;
+      }
       const within = output.blob.size <= Number(target) * 1024;
       return [
         {
           ...output,
-          name: "merged.pdf",
-          originalBytes: files.reduce((sum, file) => sum + file.size, 0),
+          name: pdf.name,
+          originalBytes: extract
+            ? pdf.blob.size
+            : files.reduce((sum, file) => sum + file.size, 0),
           detail: `${within ? "Within target" : "Over target"} · ${fileSize(output.blob.size)} for a ${target} KB target`,
         },
       ];
@@ -87,25 +104,23 @@ export function WorkspaceWorkflow({ id }: { id: WorkflowId }) {
   return (
     <FileWorkspace
       job={job}
-      notice={
-        image
-          ? "JPG, PNG, or WebP, up to 20 MB."
-          : "Up to 12 PDFs, 30 MB each and 60 MB total."
-      }
+      notice={resize
+        ? "JPG, PNG, or WebP, up to 20 MB."
+        : imagesToPdf
+          ? "Up to 12 images, 20 MB each and 60 MB total. Output uses A4 portrait pages."
+          : extract ? "One PDF, up to 30 MB." : "Up to 12 PDFs, 30 MB each and 60 MB total."}
     >
       <FileDropzone
-        label={image ? "Choose an image" : "Choose PDF files"}
-        accept={image ? acceptImages : "application/pdf,.pdf"}
-        multiple={!image}
-        max={image ? 1 : 12}
-        fileMiB={image ? 20 : 30}
-        totalMiB={image ? 20 : 60}
+        label={isImage ? (multiple ? "Choose images" : "Choose an image") : (multiple ? "Choose PDF files" : "Choose a PDF")}
+        accept={isImage ? acceptImages : "application/pdf,.pdf"}
+        multiple={multiple}
+        max={multiple ? 12 : 1}
+        fileMiB={isImage ? 20 : 30}
+        totalMiB={multiple ? 60 : isImage ? 20 : 30}
         disabled={job.busy}
         acceptFiles={select}
       />
-      {!image && (
-        <FileOrder rows={files} setRows={select} disabled={job.busy} />
-      )}
+      {multiple && <FileOrder rows={files} setRows={select} disabled={job.busy} />}
       <form
         onSubmit={(event) => {
           event.preventDefault();
@@ -113,7 +128,7 @@ export function WorkspaceWorkflow({ id }: { id: WorkflowId }) {
         }}
       >
         <fieldset disabled={job.busy} className="space-y-3">
-          {image ? (
+          {resize ? (
             <>
               <Notice>
                 The image is stretched to the chosen dimensions when its aspect
@@ -162,7 +177,12 @@ export function WorkspaceWorkflow({ id }: { id: WorkflowId }) {
               />
             </Field>
           )}
-          <Button type="submit" disabled={files.length < (image ? 1 : 2)}>
+          {extract && (
+            <Field label="Pages to keep">
+              <Input required value={range} placeholder="1, 3-5" onChange={(event) => setRange(event.target.value)} />
+            </Field>
+          )}
+          <Button type="submit" disabled={files.length < (id === "merge-check" ? 2 : 1)}>
             Run workflow
           </Button>
         </fieldset>

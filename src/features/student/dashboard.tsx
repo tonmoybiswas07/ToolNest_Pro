@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import {
+  AlertTriangle,
   ArrowRight,
   CalendarCheck,
   CalendarDays,
@@ -95,6 +96,23 @@ export function StudentDashboard({ favorites }: { favorites: string[] }) {
           </Link>
         ))}
       </div>
+      {attendance.percent !== null && attendance.percent < data.target && (
+        <div className="flex items-center gap-2 rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          <AlertTriangle size={16} aria-hidden />
+          <span>
+            Attendance warning: {attendance.percent.toFixed(1)}% — below your {data.target}% target.{" "}
+            {attendance.needed > 0 && attendance.needed !== Infinity
+              ? `Attend ${attendance.needed} more class${attendance.needed === 1 ? "" : "es"} to reach your target.`
+              : ""}
+          </span>
+          <Link
+            href={tool("attendance-tracker")}
+            className="ml-auto shrink-0 underline underline-offset-2"
+          >
+            View
+          </Link>
+        </div>
+      )}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <Widget
           icon={CalendarDays}

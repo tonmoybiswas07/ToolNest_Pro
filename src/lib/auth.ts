@@ -1,8 +1,11 @@
 import "server-only";
 
 import { mongodbAdapter } from "@better-auth/mongo-adapter";
-import { createAuthMiddleware } from "better-auth/api";
+import { APIError, createAuthMiddleware, getSessionFromCtx } from "better-auth/api";
 import { admin } from "better-auth/plugins";
+import { eraseAccountData } from "@/features/auth/account-data";
+import { profileImageUrl } from "@/features/auth/profile-image";
+import { sendVerificationMail, verificationEmailEnabled } from "@/features/auth/verification-mail";
 import { recordActivity } from "@/features/analytics/store";
 import { betterAuth } from "better-auth/minimal";
 import { z } from "zod";
@@ -32,6 +35,7 @@ async function createAuth(config: z.output<typeof configSchema>) {
   await ensureAuthIndexes(db);
 
   const google = getGoogleConfig();
+  const emailEnabled = verificationEmailEnabled();
   const baseURL = config.BETTER_AUTH_URL.origin;
 
   const adminPlugin = admin({ defaultRole: "user", adminRoles: ["admin"] });
@@ -48,6 +52,39 @@ async function createAuth(config: z.output<typeof configSchema>) {
       },
     },
     hooks: {
+      before: createAuthMiddleware(async ctx => {
+        if (ctx.path === "/update-user" || ctx.path === "/sign-up/email") {
+          const { name, image } = ctx.body ?? {};
+          if (name !== undefined && (typeof name !== "string" || !name.trim() || name.trim().length > 100)) {
+            throw APIError.fromStatus("BAD_REQUEST", { message: "Enter a name of 1 to 100 characters." });
+          }
+          if (image !== undefined && image !== null && (typeof image !== "string" || !profileImageUrl(image))) {
+            throw APIError.fromStatus("BAD_REQUEST", { message: "Choose a supported profile photo." });
+          }
+          if (typeof name === "string") ctx.body.name = name.trim();
+        }
+        if (ctx.path === "/send-verification-email" && !await getSessionFromCtx(ctx)) {
+          throw APIError.fromStatus("UNAUTHORIZED");
+        }
+        if (ctx.path === "/delete-user") {
+          const session = await getSessionFromCtx(ctx);
+          if (!session) return;
+          if (session.user.role === "admin") {
+            throw APIError.fromStatus("FORBIDDEN", { message: "Remove the administrator role before deleting this account." });
+          }
+          if (ctx.body?.password) return;
+          const credential = await ctx.context.internalAdapter.findCredentialAccount(session.user.id);
+          if (credential?.password) {
+            throw APIError.fromStatus("BAD_REQUEST", { message: "Enter your current password." });
+          }
+          if (Date.now() - new Date(session.session.createdAt).getTime() >= 5 * 60_000) {
+            throw APIError.fromStatus("FORBIDDEN", {
+              code: "SESSION_NOT_FRESH",
+              message: "Sign out and sign in again to confirm this request.",
+            });
+          }
+        }
+      }),
       after: createAuthMiddleware(async ctx => {
         const provider = ctx.path === "/sign-in/email" ? "credential" : ctx.path === "/callback/:id" && ctx.params?.id === "google" ? "google" : undefined;
         const newSession = ctx.context.newSession;
@@ -60,6 +97,12 @@ async function createAuth(config: z.output<typeof configSchema>) {
     trustedOrigins: [baseURL],
     database: mongodbAdapter(db, { client }),
     emailAndPassword: { enabled: true, minPasswordLength: 8, maxPasswordLength: 128 },
+    emailVerification: emailEnabled ? {
+      expiresIn: 3600,
+      sendOnSignUp: true,
+      sendVerificationEmail: sendVerificationMail,
+    } : undefined,
+    user: { deleteUser: { enabled: true, beforeDelete: async user => eraseAccountData(user.id) } },
     socialProviders: google ? { google: { ...google, prompt: "select_account" } } : {},
     logger: {
       level: "warn",
@@ -74,7 +117,11 @@ async function createAuth(config: z.output<typeof configSchema>) {
     },
     advanced: { useSecureCookies: config.BETTER_AUTH_URL.protocol === "https:" },
     session: { cookieCache: { enabled: false } },
-    rateLimit: { enabled: true, storage: "database" },
+    rateLimit: {
+      enabled: true,
+      storage: "database",
+      customRules: { "/send-verification-email": { window: 60, max: 3 } },
+    },
     onAPIError: { errorURL: `${baseURL}/login` },
   });
 }

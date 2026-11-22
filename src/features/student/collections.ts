@@ -20,6 +20,6 @@ export const collections = [
     name: "Work with sources",
     tone: "sources",
     description: "References, documents, and notes.",
-    slugs: ["citation-generator", "ocr-image-to-text", "ai-notes-summarizer"],
+    slugs: ["citation-generator", "ocr-image-to-text", "ai-notes-summarizer", "study-notes-organizer"],
   },
 ];

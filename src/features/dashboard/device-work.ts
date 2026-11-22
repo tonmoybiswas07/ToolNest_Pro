@@ -20,7 +20,12 @@ const settingsSchema = z.discriminatedUnion("slug", [
   }),
 ]);
 export type ToolSettings = z.infer<typeof settingsSchema>;
-export const workflowIds = ["resize-compress", "merge-check"] as const;
+export const workflowIds = [
+  "resize-compress",
+  "merge-check",
+  "images-pdf-check",
+  "extract-compress",
+] as const;
 export type WorkflowId = (typeof workflowIds)[number];
 
 const storeSchema = z.object({
@@ -34,7 +39,7 @@ const storeSchema = z.object({
       }),
     )
     .max(40),
-  pinned: z.array(z.enum(workflowIds)).max(2),
+  pinned: z.array(z.enum(workflowIds)).max(workflowIds.length),
   results: z.object({
     files: z.number().int().nonnegative(),
     saved: z.number().int().nonnegative(),

@@ -117,3 +117,10 @@ export async function writeWorkspace(
     throw error;
   }
 }
+
+export async function deleteWorkspace(owner: string, session: ClientSession) {
+  const { db } = applicationMongo();
+  for (const name of ["student_profiles", ...Object.keys(domains)]) {
+    await db.collection<{ _id: string }>(name).deleteOne({ _id: owner }, { session });
+  }
+}

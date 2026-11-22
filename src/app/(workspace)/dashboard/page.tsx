@@ -4,10 +4,11 @@ import { readWorkspace } from "@/features/student/storage";
 import { toolHref } from "@/features/tools/registry";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { personalAnalytics } from "@/features/analytics/personal";
+import { dailyExecutionCounts, personalAnalytics } from "@/features/analytics/personal";
 import type { Metadata } from "next";
 import { LogoutButton } from "@/features/auth/logout-button";
 import { AccountSummary } from "@/features/dashboard/account-summary";
+import { UsageChart } from "@/features/dashboard/usage-chart";
 import { requireSession } from "@/lib/session";
 
 export const metadata: Metadata = { title: "Dashboard" };
@@ -15,9 +16,10 @@ export const metadata: Metadata = { title: "Dashboard" };
 export default async function DashboardPage() {
   const { user } = await requireSession();
 
-  const [activity, student] = await Promise.all([
+  const [activity, student, usage] = await Promise.all([
     personalAnalytics(user.id).catch(() => null),
     readWorkspace(user.id).catch(() => null),
+    dailyExecutionCounts(user.id).catch(() => null),
   ]);
 
   return (
@@ -68,6 +70,7 @@ export default async function DashboardPage() {
               {activity.executionCount} successful tool executions in the
               retained analytics period.
             </p>
+            {usage && <UsageChart data={usage} />}
           </section>
         </div>
       ) : (

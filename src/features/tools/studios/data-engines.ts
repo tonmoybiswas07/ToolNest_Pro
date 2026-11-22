@@ -13,6 +13,33 @@ export function jsonText(value: unknown, spaces?: number) {
   return stringify(value, undefined, spaces) ?? "";
 }
 
+function isJsonRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value) && !isLosslessNumber(value);
+}
+
+export function jsonToCsv(value: unknown, spreadsheetSafe = true) {
+  const rows = Array.isArray(value) ? value : [value];
+  if (!rows.length || !rows.every(isJsonRecord)) {
+    throw new Error("Provide a JSON object or a non-empty array of objects.");
+  }
+  const headers = [...new Set(rows.flatMap((row) => Object.keys(row)))];
+  if (!headers.length) throw new Error("Provide at least one property to use as a column.");
+  if (headers.length * rows.length > 100_000) {
+    throw new Error("This table would exceed 100,000 cells. Use fewer rows or columns.");
+  }
+
+  function cell(value: unknown) {
+    let text = value == null ? "" : typeof value === "string" ? value : jsonText(value);
+    if (spreadsheetSafe && typeof value === "string" && /^(?:\s*[=+@-]|[\t\r\n])/.test(text)) text = "'" + text;
+    return /[",\r\n]/.test(text) ? '"' + text.replaceAll('"', '""') + '"' : text;
+  }
+
+  return [
+    headers.map(cell).join(","),
+    ...rows.map((row) => headers.map((header) => cell(Object.hasOwn(row, header) ? row[header] : undefined)).join(",")),
+  ].join("\r\n") + "\r\n";
+}
+
 export function inferType(value: unknown, depth = 0): string {
   if (depth > 25) return "unknown";
   if (value === null) return "null";

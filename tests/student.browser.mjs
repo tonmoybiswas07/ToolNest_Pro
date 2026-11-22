@@ -39,6 +39,8 @@ const command = spawn(
       BETTER_AUTH_SECRET: randomBytes(48).toString("base64"),
       STUDENT_OPENAI_API_KEY: "",
       STUDENT_OPENAI_MODEL: "",
+      RESEND_API_KEY: "",
+      AUTH_EMAIL_FROM: "",
     },
     stdio: "ignore",
   },
@@ -225,8 +227,8 @@ try {
   await openTool("assignment-tracker");
   await button("Complete").click();
   await visible(/Done · 100%/);
-  page.once("dialog", (dialog) => dialog.accept());
   await page.getByRole("button", { name: "Delete Revised lab report" }).click();
+  await page.getByRole("alertdialog").getByRole("button", { name: "Delete", exact: true }).click();
   await visible("No matching deadlines.");
 
   await openTool("class-routine-maker");
@@ -304,8 +306,25 @@ try {
   await button("Known").click();
   await visible("Review complete.");
 
+  const exportedDecks = page.waitForEvent("download");
+  await button("Export JSON").click();
+  assert.equal((await exportedDecks).suggestedFilename(), "flashcard-decks.json");
+  await field("Import ToolNest JSON").setInputFiles(await (await exportedDecks).path());
+  await page.getByRole("heading", { name: "Physics review", exact: true, level: 3 }).nth(1).waitFor();
+
   await page.clock.install();
   await openTool("pomodoro-timer");
+  await page.evaluate(() => {
+    window.timerNotifications = [];
+    window.Notification = class {
+      static permission = "granted";
+      static async requestPermission() { return "granted"; }
+      constructor(title) { window.timerNotifications.push(title); }
+    };
+  });
+  await button("Enable notifications").click();
+  await button("Turn off notifications").waitFor();
+
   await field("Focus (minutes)").fill("1");
   await button("Apply durations").click();
   await button("Start").click();
@@ -319,6 +338,7 @@ try {
   await button("Resume").click();
   await page.clock.fastForward(41000);
   await visible(/1 sessions today · 1 of/);
+  assert.deepEqual(await page.evaluate(() => window.timerNotifications), ["Focus complete"]);
   console.log(
     "Browser CRUD, schedule conflict, attendance, GPA, exam, flashcards, and elapsed timer passed.",
   );
@@ -568,6 +588,26 @@ try {
     .getByRole("button", { name: /^Download dashboard.*jpg/ })
     .waitFor();
 
+  await go("/dashboard/workflows/images-pdf-check", "Images → PDF → Check size");
+  await field("Choose images").setInputFiles(imageFixture);
+  await button("Run workflow").click();
+  await button("Download images.pdf").waitFor();
+  await visible(/Within target .*2048 KB target/);
+
+  await go(
+    "/dashboard/workflows/extract-compress",
+    "Extract PDF pages → Compress → Check size",
+  );
+  await field("Choose a PDF").setInputFiles({
+    name: "source.pdf",
+    mimeType: "application/pdf",
+    buffer: bytes,
+  });
+  await field("Pages to keep").fill("1");
+  await button("Run workflow").click();
+  await button("Download source-extracted.pdf").waitFor();
+  await visible(/Within target .*2048 KB target/);
+
   await page.evaluate(() => {
     localStorage.setItem(
       "toolnest-notes-v1",
@@ -599,7 +639,7 @@ try {
     ),
   );
   console.log(
-    "Dashboard resume, presets, both workflows, draft links, student snapshot, and measured file results passed.",
+    "Dashboard resume, presets, four workflows, draft links, student snapshot, and measured file results passed.",
   );
   const loginContext = await browser.newContext();
   try {
@@ -629,9 +669,21 @@ try {
   console.log(
     "Sign-up and email sign-in both returned to the requested locked tool.",
   );
+  const offlineContext = await browser.newContext();
+  try {
+    const offlinePage = await offlineContext.newPage();
+    await offlinePage.goto(origin + "/");
+    await offlinePage.waitForFunction(() => Boolean(navigator.serviceWorker.controller));
+    await offlineContext.setOffline(true);
+    await offlinePage.goto(origin + "/tools");
+    await offlinePage.getByRole("heading", { name: "You’re offline" }).waitFor();
+  } finally {
+    await offlineContext.close();
+  }
+  console.log("Offline navigation showed the installed service worker fallback.");
   assert.deepEqual(pageErrors, []);
   console.log(
-    "Authenticated browser sync and favorites passed; all 30 legacy workspaces opened.",
+    "Authenticated browser sync and favorites passed; catalog workspaces opened.",
   );
 } finally {
   await browser?.close();

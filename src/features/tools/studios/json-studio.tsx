@@ -5,7 +5,7 @@ import { isLosslessNumber } from "lossless-json";
 import { createTwoFilesPatch } from "diff";
 import { Button } from "@/components/ui/button";
 import { Editor } from "./editor";
-import { inferType, jsonText, MAX_JSON, parseJson } from "./data-engines";
+import { inferType, jsonText, jsonToCsv, MAX_JSON, parseJson } from "./data-engines";
 import {
   Actions,
   CodeBlock,
@@ -58,7 +58,7 @@ function TreeNode({
 }
 
 type Mode =
-  "Format" | "Minify" | "Validate" | "Tree" | "Compare" | "TypeScript";
+  "Format" | "Minify" | "Validate" | "Tree" | "Compare" | "TypeScript" | "To CSV";
 
 export default function JsonStudio({ slug }: StudioProps) {
   const [source, setSource] = useState("");
@@ -100,6 +100,7 @@ export default function JsonStudio({ slug }: StudioProps) {
           text: `export type JsonDocument = ${inferType(value)};\n`,
           mode,
         };
+      if (mode === "To CSV") return { text: jsonToCsv(value), mode };
       if (mode === "Tree") return { text: formatted, mode, tree: value };
       return { text: mode === "Minify" ? jsonText(value) : formatted, mode };
     });
@@ -166,6 +167,7 @@ export default function JsonStudio({ slug }: StudioProps) {
                 "Validate",
                 "Tree",
                 "TypeScript",
+                "To CSV",
                 ...(compare ? ["Compare"] : []),
               ] as Mode[]
             ).map((mode) => (
@@ -215,7 +217,9 @@ export default function JsonStudio({ slug }: StudioProps) {
                     ? "document.ts"
                     : output.mode === "Compare"
                       ? "comparison.diff"
-                      : "document.json"
+                      : output.mode === "To CSV"
+                        ? "document.csv"
+                        : "document.json"
                 }
               />
             </>

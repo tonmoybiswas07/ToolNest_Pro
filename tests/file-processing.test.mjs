@@ -10,21 +10,26 @@ import {
 import { pageRange } from "../src/features/tools/file-processing/pdf-ranges.ts";
 import {
   tools,
-  retiredTools,
+  signInOnlyTools,
   studentTools,
   legacyToolRoutes,
   canonicalToolSlug,
 } from "../src/features/tools/registry.ts";
 
-test("Registry preserves 30 tools and adds ten distinct student tools", () => {
-  assert.equal(tools.length, 40);
-  assert.equal(new Set(tools.map(tool => tool.slug)).size, 40);
-  assert.equal(studentTools.length, 10);
-  assert.equal(tools.filter(tool => tool.category !== "student" && tool.status === "Available").length, 30);
-  assert.deepEqual(tools.filter(tool => tool.status === "Requires Setup").map(tool => tool.slug), ["ai-notes-summarizer"]);
-  assert.deepEqual(retiredTools.map(tool => tool.slug), ["instagram-video-downloader", "tiktok-video-downloader", "threads-video-downloader"]);
-  assert.ok(retiredTools.every(retired => !tools.some(tool => tool.slug === retired.slug)));
-  assert.equal(legacyToolRoutes.size, 16);
+test("Registry preserves unique slugs, new tools, and active social routes", () => {
+  const slugs = new Set(tools.map(tool => tool.slug));
+  assert.equal(slugs.size, tools.length);
+  const newSlugs = [
+    "json-to-csv", "url-query-parser", "html-entity-converter", "line-sorter",
+    "text-cleaner", "number-base-converter", "loan-calculator", "date-difference-calculator",
+    "tip-calculator", "aspect-ratio-calculator", "duration-calculator", "image-color-picker",
+    "favicon-generator", "contrast-checker", "image-inspector", "study-notes-organizer",
+  ];
+  assert.ok(newSlugs.every(slug => slugs.has(slug) && !legacyToolRoutes.has(slug)));
+  assert.ok(studentTools.some(tool => tool.slug === "study-notes-organizer"));
+  const socialSlugs = ["instagram-video-downloader", "tiktok-video-downloader", "threads-video-downloader"];
+  assert.deepEqual(tools.filter(tool => tool.category === "social" && tool.status === "Available").map(tool => tool.slug), socialSlugs);
+  assert.ok(socialSlugs.every(slug => signInOnlyTools.has(slug)));
   for (const [legacy, target] of legacyToolRoutes) {
     assert.notEqual(legacy, target.slug);
     assert.ok(tools.some((tool) => tool.slug === target.slug));

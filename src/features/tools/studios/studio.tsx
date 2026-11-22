@@ -14,7 +14,30 @@ const imageEssentials = dynamic(() => import("../file-processing/image-essential
 const advancedImages = dynamic(() => import("../file-processing/advanced-image"), { ssr: false, loading });
 const pdfWorkspaces = dynamic(() => import("../file-processing/pdf-workspaces"), { ssr: false, loading });
 
+const textWorkspaces = dynamic(() => import("./text-workspaces"), { ssr: false, loading });
+const calculators = dynamic(() => import("./calculators"), { ssr: false, loading });
+const imageWorkspaces = dynamic(() => import("./image-workspaces"), { ssr: false, loading });
+const socialVideoDownloader = dynamic(() => import("./social-video-downloader"), { ssr: false, loading });
+
 const studios: Record<string, ComponentType<StudioProps>> = {
+  "json-to-csv": textWorkspaces,
+  "url-query-parser": textWorkspaces,
+  "html-entity-converter": textWorkspaces,
+  "line-sorter": textWorkspaces,
+  "text-cleaner": textWorkspaces,
+  "number-base-converter": calculators,
+  "loan-calculator": calculators,
+  "date-difference-calculator": calculators,
+  "tip-calculator": calculators,
+  "aspect-ratio-calculator": calculators,
+  "duration-calculator": calculators,
+  "image-color-picker": imageWorkspaces,
+  "favicon-generator": imageWorkspaces,
+  "contrast-checker": imageWorkspaces,
+  "image-inspector": imageWorkspaces,
+  "instagram-video-downloader": socialVideoDownloader,
+  "tiktok-video-downloader": socialVideoDownloader,
+  "threads-video-downloader": socialVideoDownloader,
   "url-encoder": dynamic(() => import("../utilities/text-tools").then(module => module.UrlTool), { ssr: false, loading }),
   "word-counter": dynamic(() => import("../utilities/text-tools").then(module => module.WordTool), { ssr: false, loading }),
   "case-converter": dynamic(() => import("../utilities/text-tools").then(module => module.CaseTool), { ssr: false, loading }),
@@ -69,6 +92,34 @@ const studios: Record<string, ComponentType<StudioProps>> = {
     loading,
   }),
   "smart-notes-studio": dynamic(() => import("./notes-studio"), {
+    ssr: false,
+    loading,
+  }),
+  "base64-studio": dynamic(() => import("./base64-studio"), {
+    ssr: false,
+    loading,
+  }),
+  "markdown-preview": dynamic(() => import("./markdown-preview"), {
+    ssr: false,
+    loading,
+  }),
+  "lorem-ipsum-generator": dynamic(() => import("./lorem-ipsum"), {
+    ssr: false,
+    loading,
+  }),
+  "box-shadow-generator": dynamic(() => import("./box-shadow-generator"), {
+    ssr: false,
+    loading,
+  }),
+  "typography-scale": dynamic(() => import("./typography-scale"), {
+    ssr: false,
+    loading,
+  }),
+  "http-status-reference": dynamic(() => import("./http-status-reference"), {
+    ssr: false,
+    loading,
+  }),
+  "cron-builder": dynamic(() => import("./cron-builder"), {
     ssr: false,
     loading,
   }),

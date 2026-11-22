@@ -8,6 +8,7 @@ import {
   ClipboardList,
   LayoutDashboard,
   Menu,
+  MessageSquare,
   Search,
   Settings,
   Users,
@@ -27,6 +28,7 @@ const links = [
   ["activity", "Activity", Activity],
   ["searches", "Search analytics", Search],
   ["tools", "Tool analytics", Wrench],
+  ["feedback", "Feedback", MessageSquare],
   ["audit-logs", "Audit logs", ClipboardList],
   ["settings", "Settings", Settings],
 ] as const;

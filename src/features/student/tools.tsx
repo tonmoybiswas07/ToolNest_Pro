@@ -44,6 +44,11 @@ const Summarizer = dynamic(
   { loading: StudentSkeleton, ssr: false },
 );
 
+const StudyNotes = dynamic(() => import("@/features/tools/studios/notes-studio"), {
+  loading: StudentSkeleton,
+  ssr: false,
+});
+
 export function StudentTool({
   slug,
   configured,
@@ -72,6 +77,8 @@ export function StudentTool({
       return <Citations />;
     case "ocr-image-to-text":
       return <OCR />;
+    case "study-notes-organizer":
+      return <StudyNotes slug={slug} />;
     case "ai-notes-summarizer":
       return <Summarizer configured={configured} signedIn={signedIn} />;
     default:

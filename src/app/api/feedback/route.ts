@@ -22,18 +22,13 @@ export async function POST(request: Request) {
     const userId = session?.user?.id ?? null;
     const userEmail = session?.user?.email ?? null;
 
-    try {
-      const { db } = applicationMongo();
-      await db.collection("user_feedback").insertOne({
-        ...parsed.data,
-        userId,
-        userEmail,
-        createdAt: new Date(),
-      });
-    } catch {
-      // If DB is offline or local-only, we still accept feedback gracefully
-      console.warn("Feedback recorded in memory/logs:", parsed.data);
-    }
+    const { db } = applicationMongo();
+    await db.collection("user_feedback").insertOne({
+      ...parsed.data,
+      userId,
+      userEmail,
+      createdAt: new Date(),
+    });
 
     return Response.json({ success: true, message: "Thank you for your feedback!" });
   } catch {

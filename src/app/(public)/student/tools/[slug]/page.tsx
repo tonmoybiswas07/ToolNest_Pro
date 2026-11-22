@@ -26,7 +26,12 @@ function getTool(slug: string) {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const tool = getTool((await params).slug);
-  return { title: tool.name, description: tool.description };
+  return {
+    title: tool.name,
+    description: tool.description,
+    alternates: { canonical: toolHref(tool) },
+    robots: signInOnlyTools.has(tool.slug) ? { index: false } : undefined,
+  };
 }
 
 export default async function Page({ params, searchParams }: Props) {
@@ -38,7 +43,9 @@ export default async function Page({ params, searchParams }: Props) {
   }
   const snapshot = await loadStudent();
   const configured = Boolean(
-    process.env.STUDENT_OPENAI_API_KEY && process.env.STUDENT_OPENAI_MODEL,
+    (process.env.STUDENT_OPENAI_API_KEY && process.env.STUDENT_OPENAI_MODEL) ||
+    process.env.GEMINI_API_KEY ||
+    process.env.STUDENT_GEMINI_API_KEY,
   );
   return (
     <>

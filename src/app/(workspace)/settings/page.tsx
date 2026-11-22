@@ -2,14 +2,24 @@ import { personalAnalytics } from "@/features/analytics/personal";
 import { PrivacyControls } from "@/features/analytics/privacy-controls";
 import { categories, findTool, type CategoryId } from "@/features/tools/registry";
 import type { Metadata } from "next";
+import { headers } from "next/headers";
+import { getAuth } from "@/lib/auth";
+import { SecuritySettings } from "@/features/auth/security-settings";
+import { verificationEmailEnabled } from "@/features/auth/verification-mail";
 import { LogoutButton } from "@/features/auth/logout-button";
 import { requireSession } from "@/lib/session";
 
 export const metadata: Metadata = { title: "Settings" };
 
-export default async function SettingsPage() {
+export default async function SettingsPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   const { user } = await requireSession();
-  const data = await personalAnalytics(user.id).catch(() => null);
+  const [data, auth, requestHeaders, params] = await Promise.all([
+    personalAnalytics(user.id).catch(() => null),
+    getAuth(),
+    headers(),
+    searchParams,
+  ]);
+  const accounts = await auth?.api.listUserAccounts({ headers: requestHeaders }).catch(() => null);
 
   return (
     <div className="max-w-4xl">
@@ -26,6 +36,14 @@ export default async function SettingsPage() {
         </p>
         <LogoutButton className="mt-5" />
       </section>
+      <SecuritySettings
+        isAdmin={user.role === "admin"}
+        email={user.email}
+        emailVerified={user.emailVerified}
+        verificationEnabled={verificationEmailEnabled()}
+        hasPassword={accounts?.some(account => account.providerId === "credential") ?? null}
+        verificationError={Boolean(params.error)}
+      />
       <section
         id="privacy"
         className="surface mt-5 p-5 sm:p-8"

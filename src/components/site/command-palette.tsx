@@ -30,13 +30,18 @@ export function CommandPalette() {
     function handleKeyDown(e: KeyboardEvent) {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
-        setOpen((prev) => {
-          if (!prev) {
-            setQuery("");
-            setSelectedIndex(0);
-          }
-          return !prev;
-        });
+        if (!open) {
+          setQuery("");
+          setSelectedIndex(0);
+        }
+        setOpen(!open);
+      } else if (
+        (e.metaKey || e.ctrlKey) &&
+        e.shiftKey &&
+        e.key.toLowerCase() === "d"
+      ) {
+        e.preventDefault();
+        setTheme(theme === "dark" ? "light" : "dark");
       } else if (e.key === "Escape" && open) {
         e.preventDefault();
         setOpen(false);
@@ -44,7 +49,7 @@ export function CommandPalette() {
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [open]);
+  }, [open, setTheme, theme]);
 
   // Focus input when opened
   useEffect(() => {
@@ -68,7 +73,7 @@ export function CommandPalette() {
       {
         id: "nav-tools",
         title: "Explore Tools Catalog",
-        description: "Browse all 40 digital and academic tools",
+        description: "Browse digital and academic tools",
         category: "Navigation",
         onSelect: () => router.push("/tools"),
       },

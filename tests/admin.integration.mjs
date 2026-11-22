@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFile, spawn } from "node:child_process";
-import { createHash, randomBytes, randomUUID } from "node:crypto";
+import { createHash, createHmac, randomBytes, randomUUID } from "node:crypto";
 import { promisify } from "node:util";
 import { MongoClient, ObjectId } from "mongodb";
 import { signInOnlyTools, toolHref, tools } from "../src/features/tools/registry.ts";
@@ -25,8 +25,13 @@ const env = {
   BETTER_AUTH_SECRET: randomBytes(48).toString("base64"),
   GOOGLE_CLIENT_ID: "phase3-dummy.apps.googleusercontent.com",
   GOOGLE_CLIENT_SECRET: "test-only",
+  RESEND_API_KEY: "",
+  AUTH_EMAIL_FROM: "",
   STUDENT_OPENAI_API_KEY: "",
   STUDENT_OPENAI_MODEL: "",
+  RESEND_API_KEY: "",
+  AUTH_EMAIL_FROM: "",
+  SOCIAL_DOWNLOAD_PROVIDER_URL: "",
 };
 const mongo = new MongoClient(uri, { serverSelectionTimeoutMS: 5000 });
 const db = mongo.db();
@@ -66,10 +71,11 @@ function cookieFrom(response) {
     ?.split(";")[0];
 }
 
-async function signup(name) {
+async function signup(name, ip) {
   const email = `${name.toLowerCase()}@example.com`;
   const response = await request("/api/auth/sign-up/email", {
     body: { name, email, password },
+    ip,
   });
   assert.equal(response.status, 200);
   const cookie = cookieFrom(response);
@@ -115,9 +121,9 @@ async function verify() {
     "image-cropper": "image-editor", "image-watermark": "social-media-image-studio",
     "json-formatter": "json-studio", "base64-converter": "jwt-inspector",
     "regex-tester": "regex-lab", "text-diff": "code-diff-studio",
-    "duplicate-line-remover": "smart-notes-studio", "lorem-ipsum-generator": "prompt-builder",
+    "duplicate-line-remover": "smart-notes-studio",
     "palette-generator": "color-system-generator", "gradient-builder": "gradient-studio",
-    "contrast-checker": "glassmorphism-builder", "qr-code-generator": "qr-code-studio",
+    "qr-code-generator": "qr-code-studio",
     "pdf-to-image": "pdf-toolkit?mode=pdf-to-image", "image-to-pdf": "pdf-toolkit?mode=image-to-pdf",
     "pdf-merge": "pdf-merger", "pdf-split": "pdf-splitter",
   };
@@ -135,7 +141,7 @@ async function verify() {
   assert.equal((await request("/api/admin")).status, 401);
   assert.equal((await request("/admin")).headers.get("location"), "/login");
   const owner = await signup("Owner");
-  assert.equal(signInOnlyTools.size, 15);
+  assert.equal(signInOnlyTools.size, 18);
   for (const tool of tools) {
     const path = toolHref(tool);
     const response = await request(path);
@@ -180,6 +186,7 @@ async function verify() {
   await assert.rejects(changeRole("bootstrap", member.id));
   await assert.rejects(changeRole("revoke", owner.id, owner.id));
   await assert.rejects(changeRole("grant", owner.id, member.id));
+  assert.equal((await request("/api/auth/delete-user", { ...owner, body: { password } })).status, 403);
 
   for (const path of [
     "",
@@ -189,6 +196,7 @@ async function verify() {
     "/searches",
     "/tools",
     "/audit-logs",
+    "/feedback",
     "/settings",
   ]) {
     const response = await request(adminPage(path), owner);
@@ -199,6 +207,22 @@ async function verify() {
       path,
     );
   }
+
+  const feedback = { type: "suggestion", rating: 5, message: "Feedback integration check" };
+  assert.equal((await request("/api/feedback", { ...member, body: feedback })).status, 200);
+  const feedbackView = await (await request("/admin/feedback?type=suggestion", owner)).text();
+  assert.match(feedbackView, /Feedback integration check/);
+  assert.match(feedbackView, /member@example.com/);
+  assert.doesNotMatch(await (await request("/admin/feedback?type=bug", owner)).text(), /Feedback integration check/);
+  assert.doesNotMatch(await (await request("/admin/feedback", member)).text(), /Feedback integration check/);
+
+  const sitemap = await request("/sitemap.xml");
+  assert.equal(sitemap.status, 200);
+  const urls = await sitemap.text();
+  assert.match(urls, /\/tools\/json-studio</);
+  assert.doesNotMatch(urls, /\/admin|\/tools\/instagram-video-downloader/);
+  assert.match(await (await request("/robots.txt")).text(), /Sitemap: https?:\/\//);
+
   assert.equal(
     (
       await request("/api/auth/admin/set-role", {
@@ -423,7 +447,7 @@ async function verify() {
         slug: "instagram-video-downloader",
       })
     ).status,
-    400,
+    204,
   );
   assert.equal(
     (
@@ -471,6 +495,12 @@ async function verify() {
     await request("/dashboard", { cookie: refreshed })
   ).text();
   assert.match(personal, /Recently used tools/);
+  assert.match(personal, /Successful runs per day over the last 14 days/);
+  const homeResponse = await request("/api/analytics/recent", { cookie: refreshed });
+  assert.equal(homeResponse.headers.get("cache-control"), "private, no-store");
+  const homeTasks = await homeResponse.json();
+  assert.ok(homeTasks.favorites.includes("image-compressor"));
+  assert.ok(homeTasks.slugs.includes("json-studio"));
   assert.match(personal, /JSON Studio/);
 
   const report = await (await request("/admin/searches?days=7", owner)).text();
@@ -592,14 +622,20 @@ async function verify() {
   assert.equal((await studentAnalytics({ ...studentEvent, notes: assignment.description })).status, 400);
   assert.equal((await studentAnalytics({ type: "favorite", slug: studentEvent.slug, enabled: true })).status, 204);
   assert.match(await (await request(dashboard, secondStudent)).text(), /Assignment &amp; Deadline Tracker/);
-  const retired = "instagram-video-downloader";
-  await studentEvents.insertOne({ slug: retired, type: "executed", at: new Date(), expiresAt: new Date(Date.now() + 86400000), userId: member.id });
-  await db.collection("admin_settings").updateOne({ _id: `user:${member.id}` }, { $addToSet: { favorites: retired } }, { upsert: true });
-  assert.equal((await request(`/tools/${retired}`)).headers.get("location"), "/tools");
+  const socialSlug = "instagram-video-downloader";
+  await studentEvents.insertOne({ slug: socialSlug, type: "executed", at: new Date(), expiresAt: new Date(Date.now() + 86400000), userId: member.id });
+  await db.collection("admin_settings").updateOne({ _id: `user:${member.id}` }, { $addToSet: { favorites: socialSlug } }, { upsert: true });
+  await expectRedirect(await request(`/tools/${socialSlug}`), `/login?next=${encodeURIComponent(`/tools/${socialSlug}`)}`);
   assert.equal((await request("/tools/assignment-tracker")).headers.get("location"), "/student/tools/assignment-tracker");
   assert.match(await (await request("/admin/tools", owner)).text(), /Instagram Video Downloader/);
-  assert.doesNotMatch(await (await request("/dashboard", secondStudent)).text(), /Instagram Video Downloader/);
-  assert.equal(await studentEvents.countDocuments({ slug: retired }), 1);
+  assert.match(await (await request("/dashboard", secondStudent)).text(), /Instagram Video Downloader/);
+
+  const socialRequest = { platform: "instagram", url: "https://www.instagram.com/reel/example/" };
+  assert.equal((await request("/api/social-download", { body: socialRequest })).status, 401);
+  assert.equal((await request("/api/social-download", { ...owner, body: socialRequest })).status, 503);
+  assert.equal((await request("/api/social-download", {
+    ...owner, body: { ...socialRequest, url: "https://instagram.com.example.org/reel/example/" },
+  })).status, 400);
   assert.equal((await request("/api/student/summary", { ...owner, body: { consent: true, mode: "concise", text: "A valid length of source notes" } })).status, 503);
 
   const google = await request("/api/auth/sign-in/social", {
@@ -634,6 +670,58 @@ async function verify() {
       .countDocuments({ role: "admin", banned: { $ne: true } }),
     1,
   );
+
+  const disposable = await signup("Disposable", "192.0.2.210");
+  const authRequest = (endpoint, body, account = disposable) =>
+    request(`/api/auth/${endpoint}`, { ...account, body, ip: "192.0.2.210" });
+
+  assert.match(await (await request("/profile", disposable)).text(), /Edit profile/);
+  assert.match(await (await request("/settings", disposable)).text(), /Change password/);
+  assert.equal((await authRequest("update-user", { image: "data:image/svg+xml;base64,AAAA" })).status, 400);
+  const photo = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAACklEQVR42mNgAAIAAAUAAen63NgAAAAASUVORK5CYII=";
+  assert.equal((await authRequest("update-user", { name: " Fresh profile ", image: photo })).status, 200);
+  assert.match(await (await request("/profile", disposable)).text(), /Fresh profile/);
+  assert.equal((await (await authRequest("get-session")).json()).user.image, photo);
+  assert.equal((await authRequest("update-user", { image: null })).status, 200);
+  assert.equal((await (await authRequest("get-session")).json()).user.image, null);
+
+  assert.equal((await authRequest("send-verification-email", { email: disposable.email }, {})).status, 401);
+  const badVerification = await authRequest("verify-email?token=invalid&callbackURL=%2Fsettings");
+  assert.equal(badVerification.headers.get("location"), "/settings?error=INVALID_TOKEN");
+  const encode = (value) => Buffer.from(JSON.stringify(value)).toString("base64url");
+  const payload = `${encode({ alg: "HS256" })}.${encode({
+    email: disposable.email,
+    userId: disposable.id,
+    exp: Math.floor(Date.now() / 1000) + 60,
+  })}`;
+  const signature = createHmac("sha256", env.BETTER_AUTH_SECRET).update(payload).digest("base64url");
+  assert.equal((await authRequest(`verify-email?token=${payload}.${signature}&callbackURL=%2Fsettings`)).headers.get("location"), "/settings");
+  assert.equal((await (await authRequest("get-session")).json()).user.emailVerified, true);
+
+  const otherLogin = await authRequest("sign-in/email", { email: disposable.email, password }, {});
+  const otherCookie = cookieFrom(otherLogin);
+  assert.ok(otherCookie);
+  const newPassword = "Updated-test-password!";
+  assert.equal((await authRequest("change-password", { currentPassword: "incorrect", newPassword })).status, 400);
+  const changed = await authRequest("change-password", { currentPassword: password, newPassword, revokeOtherSessions: true });
+  assert.equal(changed.status, 200);
+  disposable.cookie = cookieFrom(changed) ?? disposable.cookie;
+  assert.equal(await (await authRequest("get-session", undefined, { cookie: otherCookie })).json(), null);
+  assert.equal((await authRequest("sign-in/email", { email: disposable.email, password }, {})).status, 401);
+
+  const disposableBinding = await binding(disposable);
+  assert.equal((await writeStudent(disposable, disposableBinding, 0, studentData)).status, 200);
+  await db.collection("admin_settings").insertOne({ _id: `user:${disposable.id}`, favorites: ["json-studio"] });
+  await db.collection("user_feedback").insertOne({ userId: disposable.id, userEmail: disposable.email, message: "Keep anonymous feedback." });
+  assert.equal((await authRequest("delete-user", {})).status, 400);
+  assert.equal((await authRequest("delete-user", { password })).status, 400);
+  assert.equal((await authRequest("delete-user", { password: newPassword })).status, 200);
+  assert.equal(await (await authRequest("get-session")).json(), null);
+  assert.equal(await db.collection("user").findOne({ _id: new ObjectId(disposable.id) }), null);
+  assert.equal(await db.collection("student_profiles").findOne({ _id: disposable.id }), null);
+  assert.equal(await assignments.findOne({ _id: disposable.id }), null);
+  assert.equal(await db.collection("admin_settings").findOne({ _id: `user:${disposable.id}` }), null);
+  assert.equal(await db.collection("user_feedback").countDocuments({ userId: null, userEmail: null, message: "Keep anonymous feedback." }), 1);
 
   console.log("Admin, authentication, analytics, and Student Hub integration checks passed.");
 }
