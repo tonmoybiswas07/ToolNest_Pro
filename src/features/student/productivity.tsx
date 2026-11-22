@@ -315,6 +315,11 @@ export function Flashcards() {
   const [flipped, setFlipped] = useState(false);
   const [reviewed, setReviewed] = useState(0);
   const [studying, setStudying] = useState(false);
+  const [quizMode, setQuizMode] = useState(false);
+  const [quizIndex, setQuizIndex] = useState(0);
+  const [quizScore, setQuizScore] = useState(0);
+  const [quizSelected, setQuizSelected] = useState<string | null>(null);
+  const [quizOptions, setQuizOptions] = useState<string[]>([]);
   const deck = data.decks.find((item) => item.id === deckId);
   const edit = data.decks.find((item) => item.id === deckEdit);
   const card = deck?.cards.find((item) => item.id === cardEdit);
@@ -486,18 +491,136 @@ export function Flashcards() {
                     setReviewed(0);
                     setFlipped(false);
                     setStudying(true);
+                    setQuizMode(false);
                   }}
                 >
                   {shuffle ? "Shuffle due cards" : "Study due cards"}
                 </Button>
               ))}
-              {studying && (
-                <Button variant="ghost" onClick={() => setStudying(false)}>
-                  End review
+              <Button
+                variant="outline"
+                disabled={!deck.cards.length}
+                onClick={() => {
+                  setStudying(false);
+                  setQuizMode(true);
+                  setQuizIndex(0);
+                  setQuizScore(0);
+                  setQuizSelected(null);
+                  if (deck.cards[0]) {
+                    const correct = deck.cards[0].back;
+                    const others = deck.cards.filter((c) => c.id !== deck.cards[0].id).map((c) => c.back);
+                    const shuffledOthers = [...others].sort(() => Math.random() - 0.5).slice(0, 3);
+                    setQuizOptions([correct, ...shuffledOthers].sort(() => Math.random() - 0.5));
+                  }
+                }}
+              >
+                Practice Quiz
+              </Button>
+              {(studying || quizMode) && (
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    setStudying(false);
+                    setQuizMode(false);
+                  }}
+                >
+                  End {quizMode ? "quiz" : "review"}
                 </Button>
               )}
             </div>
-            {studying ? (
+            {quizMode ? (
+              <div className="rounded-xl border border-border p-4 bg-accent/20">
+                {quizIndex < deck.cards.length ? (
+                  <>
+                    <div className="flex items-center justify-between text-xs text-muted-foreground mb-3">
+                      <span>Question {quizIndex + 1} of {deck.cards.length}</span>
+                      <span>Score: {quizScore}</span>
+                    </div>
+                    <div className="rounded-lg border border-border bg-card p-4 mb-4">
+                      <span className="text-xs text-muted-foreground block mb-1">Prompt / Question</span>
+                      <p className="text-base font-medium">{deck.cards[quizIndex]?.front}</p>
+                    </div>
+                    <div className="grid gap-2">
+                      {quizOptions.map((opt, i) => {
+                        const correct = opt === deck.cards[quizIndex]?.back;
+                        const isSelected = opt === quizSelected;
+                        let btnStyle = "border-border bg-card hover:bg-accent text-foreground";
+                        if (quizSelected !== null) {
+                          if (correct) {
+                            btnStyle = "bg-primary text-primary-foreground border-primary font-medium";
+                          } else if (isSelected) {
+                            btnStyle = "bg-destructive text-white border-destructive";
+                          } else {
+                            btnStyle = "opacity-50 border-border bg-card";
+                          }
+                        }
+                        return (
+                          <button
+                            key={i}
+                            type="button"
+                            disabled={quizSelected !== null}
+                            onClick={() => {
+                              setQuizSelected(opt);
+                              if (correct) setQuizScore((s) => s + 1);
+                            }}
+                            className={`w-full text-left rounded-lg border p-3 text-sm transition-all ${btnStyle}`}
+                          >
+                            {opt}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {quizSelected !== null && (
+                      <div className="mt-4 flex justify-end">
+                        <Button
+                          onClick={() => {
+                            const next = quizIndex + 1;
+                            setQuizIndex(next);
+                            setQuizSelected(null);
+                            if (next < deck.cards.length && deck.cards[next]) {
+                              const correct = deck.cards[next].back;
+                              const others = deck.cards.filter((c) => c.id !== deck.cards[next].id).map((c) => c.back);
+                              const shuffledOthers = [...others].sort(() => Math.random() - 0.5).slice(0, 3);
+                              setQuizOptions([correct, ...shuffledOthers].sort(() => Math.random() - 0.5));
+                            }
+                          }}
+                        >
+                          {quizIndex + 1 < deck.cards.length ? "Next Question" : "See Results"}
+                        </Button>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="py-6 text-center space-y-3">
+                    <h4 className="text-lg font-semibold">Quiz Complete!</h4>
+                    <p className="text-sm text-muted-foreground">
+                      You scored {quizScore} out of {deck.cards.length} ({Math.round((quizScore / deck.cards.length) * 100)}%)
+                    </p>
+                    <div className="flex justify-center gap-2 pt-2">
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setQuizIndex(0);
+                          setQuizScore(0);
+                          setQuizSelected(null);
+                          if (deck.cards[0]) {
+                            const correct = deck.cards[0].back;
+                            const others = deck.cards.filter((c) => c.id !== deck.cards[0].id).map((c) => c.back);
+                            const shuffledOthers = [...others].sort(() => Math.random() - 0.5).slice(0, 3);
+                            setQuizOptions([correct, ...shuffledOthers].sort(() => Math.random() - 0.5));
+                          }
+                        }}
+                      >
+                        Try Again
+                      </Button>
+                      <Button onClick={() => setQuizMode(false)}>
+                        Back to Deck
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : studying ? (
               <>
                 <p className="text-sm text-muted-foreground">
                   {reviewed} reviewed · {queue.length} remaining
@@ -663,6 +786,45 @@ export function Exams() {
         Number(time.slice(0, 2)) * 60 + Number(time.slice(3));
       return sum + minutes(item.end) - minutes(item.start);
     }, 0);
+
+  function exportExamsIcs() {
+    if (!data.exams.length) return;
+    const lines = [
+      "BEGIN:VCALENDAR",
+      "VERSION:2.0",
+      "PRODID:-//ToolNest Pro//Exam Schedule//EN",
+      "CALSCALE:GREGORIAN",
+      "METHOD:PUBLISH",
+    ];
+    const timestamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+
+    for (const examItem of data.exams) {
+      const course = data.courses.find((c) => c.id === examItem.course);
+      const title = course ? `Exam: ${course.code ? course.code + " - " : ""}${course.name}` : "Exam";
+      const examDate = new Date(examItem.date);
+      const startStr = examDate.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+      const endStr = new Date(examDate.getTime() + 2 * 3600000).toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+      const topicsList = examItem.topics.map((t) => (t.done ? "[x] " : "[ ] ") + t.name).join("\\n");
+
+      lines.push(
+        "BEGIN:VEVENT",
+        `UID:exam-${examItem.id}@toolnest.pro`,
+        `DTSTAMP:${timestamp}`,
+        `DTSTART:${startStr}`,
+        `DTEND:${endStr}`,
+        `SUMMARY:${title}`,
+        `DESCRIPTION:Topics:\\n${topicsList || "None"}`,
+        "BEGIN:VALARM",
+        "ACTION:DISPLAY",
+        "DESCRIPTION:Exam Tomorrow",
+        "TRIGGER:-P1D",
+        "END:VALARM",
+        "END:VEVENT"
+      );
+    }
+    lines.push("END:VCALENDAR");
+    download("exam-schedule.ics", lines.join("\r\n"), "text/calendar;charset=utf-8");
+  }
   return (
     <div className="grid gap-5 lg:grid-cols-2">
       <Panel title={entry ? "Edit exam" : "Add exam"}>
@@ -748,6 +910,17 @@ export function Exams() {
         )}
       </Panel>
       <Panel title="Exam countdowns">
+        <div className="mb-3 flex justify-end">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={!data.exams.length}
+            onClick={exportExamsIcs}
+            title="Export exam schedule and alerts to Google Calendar / Apple Calendar"
+          >
+            Export Exams (.ics)
+          </Button>
+        </div>
         {!data.exams.length && (
           <p className="text-sm text-muted-foreground">No exams scheduled.</p>
         )}

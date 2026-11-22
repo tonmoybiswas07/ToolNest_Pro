@@ -12,6 +12,16 @@ export const metadata: Metadata = {
   },
   description:
     "Explore the ToolNest Pro tools for images, documents, code, text, design, everyday utilities, and student productivity.",
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "ToolNest Pro",
+  },
+  icons: {
+    icon: "/icon.svg",
+    apple: "/icon.svg",
+  },
   openGraph: {
     title: "ToolNest Pro",
     description:

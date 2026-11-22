@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   EditActions,
@@ -8,6 +9,7 @@ import {
   Form,
   Panel,
   Row,
+  download,
   get,
   newId,
   replace,
@@ -129,6 +131,64 @@ export function StudentSettings() {
             plans.
           </p>
         )}
+      </Panel>
+      <Panel title="Workspace Backup & Restore" className="lg:col-span-2">
+        <p className="mb-4 text-sm text-muted-foreground">
+          Export your entire student hub workspace (courses, timetables, assignments, attendance, grades, flashcards, exams, and notes) to a JSON file, or restore from a previous backup.
+        </p>
+        <div className="flex flex-wrap items-center gap-4">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              const filename = `toolnest-student-backup-${new Date().toISOString().slice(0, 10)}.json`;
+              download(filename, JSON.stringify(data, null, 2), "application/json");
+              toast.success("Workspace backup downloaded.");
+            }}
+          >
+            Export Full Backup (.json)
+          </Button>
+          <label className="text-sm">
+            <span className="block text-xs font-medium text-muted-foreground mb-1">Restore from backup</span>
+            <input
+              type="file"
+              accept=".json,application/json"
+              className="student-input"
+              onChange={async (e) => {
+                const file = e.currentTarget.files?.[0];
+                e.currentTarget.value = "";
+                if (!file) return;
+                try {
+                  const content = await file.text();
+                  const parsed = JSON.parse(content);
+                  if (typeof parsed !== "object" || !parsed) throw new Error();
+                  const ok = await save({
+                    ...data,
+                    courses: Array.isArray(parsed.courses) ? parsed.courses : data.courses,
+                    classes: Array.isArray(parsed.classes) ? parsed.classes : data.classes,
+                    assignments: Array.isArray(parsed.assignments) ? parsed.assignments : data.assignments,
+                    attendance: Array.isArray(parsed.attendance) ? parsed.attendance : data.attendance,
+                    decks: Array.isArray(parsed.decks) ? parsed.decks : data.decks,
+                    exams: Array.isArray(parsed.exams) ? parsed.exams : data.exams,
+                    notes: Array.isArray(parsed.notes) ? parsed.notes : data.notes,
+                    semesters: Array.isArray(parsed.semesters) ? parsed.semesters : data.semesters,
+                    grades: Array.isArray(parsed.grades) ? parsed.grades : data.grades,
+                    timezone: typeof parsed.timezone === "string" ? parsed.timezone : data.timezone,
+                    target: typeof parsed.target === "number" ? parsed.target : data.target,
+                    studyGoal: typeof parsed.studyGoal === "number" ? parsed.studyGoal : data.studyGoal,
+                  });
+                  if (ok) {
+                    toast.success("Workspace successfully restored from backup!");
+                  } else {
+                    toast.error("Could not save restored workspace.");
+                  }
+                } catch {
+                  toast.error("Invalid workspace backup file.");
+                }
+              }}
+            />
+          </label>
+        </div>
       </Panel>
     </div>
   );

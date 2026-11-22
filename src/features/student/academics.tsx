@@ -22,6 +22,7 @@ import {
   choices,
   courseName,
   courseOptions,
+  download,
   get,
   newId,
   priority,
@@ -302,6 +303,52 @@ export function Routine() {
   const [todayOnly, setTodayOnly] = useState(false);
   const entry = data.classes.find((item) => item.id === editing);
   const today = dayAt(data.timezone).dayOfWeek;
+
+  function exportRoutineIcs() {
+    if (!data.classes.length) return;
+    const dayCodes = ["MO", "TU", "WE", "TH", "FR", "SA", "SU"];
+    const lines = [
+      "BEGIN:VCALENDAR",
+      "VERSION:2.0",
+      "PRODID:-//ToolNest Pro//Class Timetable//EN",
+      "CALSCALE:GREGORIAN",
+      "METHOD:PUBLISH",
+    ];
+    const now = new Date();
+    const timestamp = now.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+    const currentDayOfWeek = (now.getUTCDay() + 6) % 7;
+    const monday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - currentDayOfWeek));
+
+    for (const item of data.classes) {
+      const course = data.courses.find((c) => c.id === item.course);
+      const title = course ? `${course.code ? course.code + " - " : ""}${course.name}` : "Class";
+      const dayOffset = item.day - 1;
+      const classDate = new Date(monday.getTime() + dayOffset * 86400000);
+      const dateStr = classDate.toISOString().slice(0, 10).replace(/-/g, "");
+      const startParts = (item.start || "09:00").split(":");
+      const endParts = (item.end || "10:00").split(":");
+      const startStr = `${dateStr}T${startParts[0].padStart(2, "0")}${startParts[1].padStart(2, "0")}00`;
+      const endStr = `${dateStr}T${endParts[0].padStart(2, "0")}${endParts[1].padStart(2, "0")}00`;
+      const dayCode = dayCodes[dayOffset] || "MO";
+      const loc = [item.building, item.room].filter(Boolean).join(", ");
+
+      lines.push(
+        "BEGIN:VEVENT",
+        `UID:class-${item.id}-${dateStr}@toolnest.pro`,
+        `DTSTAMP:${timestamp}`,
+        `DTSTART:${startStr}`,
+        `DTEND:${endStr}`,
+        `RRULE:FREQ=WEEKLY;BYDAY=${dayCode}`,
+        `SUMMARY:${title} (${item.type || "Class"})`,
+        `LOCATION:${loc || "Campus"}`,
+        `DESCRIPTION:Instructor: ${item.instructor || "N/A"}\\nType: ${item.type || "Lecture"}`,
+        "STATUS:CONFIRMED",
+        "END:VEVENT"
+      );
+    }
+    lines.push("END:VCALENDAR");
+    download("class-routine.ics", lines.join("\r\n"), "text/calendar;charset=utf-8");
+  }
   return (
     <div className="grid gap-5">
       <Panel title={entry ? "Edit class" : "Schedule a class"}>
@@ -396,6 +443,14 @@ export function Routine() {
           </Button>
           <Button variant="outline" onClick={() => window.print()}>
             Print / Save PDF
+          </Button>
+          <Button
+            variant="outline"
+            disabled={!data.classes.length}
+            onClick={exportRoutineIcs}
+            title="Export timetable to Google Calendar / Apple Calendar"
+          >
+            Export iCal (.ics)
           </Button>
         </div>
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">

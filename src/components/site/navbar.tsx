@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, X } from "lucide-react";
+import { Menu, X, Search } from "lucide-react";
 import { useState } from "react";
 import { Brand } from "./brand";
 import { ThemeToggle } from "./theme-toggle";
@@ -56,6 +56,18 @@ export function Navbar() {
           {navigationLinks()}
         </nav>
         <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "k", metaKey: true }))}
+            className="hidden items-center gap-2 text-xs text-muted-foreground sm:inline-flex"
+            aria-label="Open Command Palette"
+          >
+            <Search className="h-3.5 w-3.5" />
+            <span>Search</span>
+            <kbd className="rounded border border-border bg-accent px-1.5 py-0.5 text-[10px]">⌘K</kbd>
+          </Button>
           <ThemeToggle />
           {user ? (
             <>
