@@ -6,6 +6,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import {
   blankPrompt,
   composePrompt,
@@ -54,6 +55,7 @@ const templates = [
 ];
 
 export default function PromptBuilder({ slug }: StudioProps) {
+  const confirm = useConfirm();
   const [saved, setSaved] = useState(() =>
     readStorage(storageKey, isTemplates, []),
   );
@@ -163,8 +165,14 @@ export default function PromptBuilder({ slug }: StudioProps) {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => {
-                  if (!window.confirm("Delete this saved template?")) return;
+                onClick={async () => {
+                  const ok = await confirm({
+                    title: "Delete this template?",
+                    description: "This custom template will be permanently removed from this device.",
+                    confirmText: "Delete",
+                    destructive: true,
+                  });
+                  if (!ok) return;
                   const next = saved.filter(
                     (template) => template.id !== selected,
                   );

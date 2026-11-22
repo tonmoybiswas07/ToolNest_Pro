@@ -4,11 +4,13 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { sendAnalytics } from "./client";
 
 export function PrivacyControls({ consent }: { consent: boolean }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
+  const confirm = useConfirm();
 
   async function update(remove = false) {
     setPending(true);
@@ -26,8 +28,14 @@ export function PrivacyControls({ consent }: { consent: boolean }) {
 
   return <div className="mt-4 flex flex-wrap items-center gap-3">
     <Button type="button" variant="outline" disabled={pending} onClick={() => update()}>{consent ? "Turn off personal search history" : "Opt in to personal search history"}</Button>
-    <Button type="button" variant="ghost" disabled={pending} onClick={() => {
-      if (window.confirm("Delete your personal search history and turn off future collection?")) void update(true);
+    <Button type="button" variant="ghost" disabled={pending} onClick={async () => {
+      const ok = await confirm({
+        title: "Delete personal search history?",
+        description: "This will permanently remove your search history and turn off future personalized collection. This cannot be undone.",
+        confirmText: "Delete History",
+        destructive: true,
+      });
+      if (ok) void update(true);
     }}>Delete personal search history</Button>
   </div>;
 }

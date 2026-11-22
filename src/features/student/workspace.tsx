@@ -13,6 +13,7 @@ import {
 } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { sendAnalytics } from "@/features/analytics/client";
 import { emptyStudent, studentSchema, type Student } from "./model";
 
@@ -341,6 +342,7 @@ export function EditActions({
   title: string;
 }) {
   const { pending } = useStudent();
+  const confirm = useConfirm();
   return (
     <>
       <Button
@@ -359,8 +361,14 @@ export function EditActions({
         size="sm"
         disabled={pending}
         aria-label={`Delete ${title}`}
-        onClick={() => {
-          if (window.confirm(`Delete ${title}?`)) remove();
+        onClick={async () => {
+          const ok = await confirm({
+            title: `Delete "${title}"?`,
+            description: "This action cannot be undone.",
+            confirmText: "Delete",
+            destructive: true,
+          });
+          if (ok) remove();
         }}
       >
         Delete

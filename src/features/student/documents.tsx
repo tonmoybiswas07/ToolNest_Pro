@@ -5,6 +5,7 @@ import type { CSL } from "@citation-js/core";
 import type { Worker as OcrWorker } from "tesseract.js";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { validatePdf } from "@/features/tools/file-processing/files";
 import type { CitationStyle } from "./citations";
 import {
@@ -544,6 +545,7 @@ export function Summarizer({
   signedIn: boolean;
 }) {
   const { data, save, pending } = useStudent();
+  const confirm = useConfirm();
   const [text, setText] = useState("");
   const [summary, setSummary] = useState("");
   const [notice, setNotice] = useState("");
@@ -765,8 +767,14 @@ export function Summarizer({
                         variant="ghost"
                         disabled={pending}
                         onClick={async () => {
+                          const ok = await confirm({
+                            title: `Delete "${note.title}"?`,
+                            description: "This note will be permanently removed from your workspace.",
+                            confirmText: "Delete",
+                            destructive: true,
+                          });
                           if (
-                            window.confirm(`Delete ${note.title}?`) &&
+                            ok &&
                             (await save(
                               { ...data, notes: without(data.notes, note.id) },
                               false,

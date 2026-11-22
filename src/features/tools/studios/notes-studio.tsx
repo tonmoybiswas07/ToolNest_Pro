@@ -7,6 +7,7 @@ import Markdown from "react-markdown";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import {
   filteredNotes,
   isNotes,
@@ -32,6 +33,7 @@ import {
 const storageKey = draftKeys.notes;
 
 export default function NotesStudio({ slug }: StudioProps) {
+  const confirm = useConfirm();
   const [notes, setNotes] = useState(() =>
     readStorage(storageKey, isNotes, []),
   );
@@ -232,8 +234,14 @@ export default function NotesStudio({ slug }: StudioProps) {
                   type="button"
                   variant="ghost"
                   disabled={!content}
-                  onClick={() => {
-                    if (window.confirm("Clear the Markdown in this note?")) {
+                  onClick={async () => {
+                    const ok = await confirm({
+                      title: "Clear Markdown content?",
+                      description: "This will erase all text in the current note. This cannot be undone.",
+                      confirmText: "Clear",
+                      destructive: true,
+                    });
+                    if (ok) {
                       edit({ content: "" });
                       setDirtyPreview(false);
                     }
@@ -244,9 +252,14 @@ export default function NotesStudio({ slug }: StudioProps) {
                 <Button
                   type="button"
                   variant="ghost"
-                  onClick={() => {
-                    if (!window.confirm("Delete this note from this device?"))
-                      return;
+                  onClick={async () => {
+                    const ok = await confirm({
+                      title: "Delete this note?",
+                      description: "The note will be permanently removed from this device.",
+                      confirmText: "Delete",
+                      destructive: true,
+                    });
+                    if (!ok) return;
                     const next = notes.filter((item) => item.id !== note.id);
                     if (persist(next)) {
                       setSelected(next[0]?.id);
